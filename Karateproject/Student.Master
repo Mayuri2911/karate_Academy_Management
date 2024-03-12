@@ -1,0 +1,82 @@
+﻿<%@ Master Language="C#" AutoEventWireup="true" CodeBehind="Student.Master.cs" Inherits="Karateproject.Student" %>
+
+<!DOCTYPE HTML>
+<!--
+	Introspect by TEMPLATED
+	templated.co @templatedco
+	Released for free under the Creative Commons Attribution 3.0 license (templated.co/license)
+-->
+<html>
+	<head>
+		<title>Introspect by TEMPLATED</title>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+		<link rel="stylesheet" href="assets/css/main.css" />
+	</head>
+	<body>
+
+		<!-- Header -->
+			<header id="header">
+				<div class="inner">
+					<a href="index.html" class="logo" >Karate Class</a> <%--style="margin-left: -6%;"--%>
+					<nav id="nav">
+						<a href="ProfileForm.aspx">Profile</a>
+						<a href="ViewCoach.aspx">View Coach</a>
+                        <a href="ApplyMatchForm.aspx">Match</a>
+                         <a href="matchfeedback.aspx">Match feedback</a>
+                         <a href="Resultview.aspx">Result view</a>
+                         <a href="Home.aspx">Logout</a>
+
+					</nav>
+				</div>
+			</header>
+			<a href="#menu" class="navPanelToggle"><span class="fa fa-bars"></span></a>
+
+		<!-- Banner -->
+			
+
+		<!-- One -->
+			
+
+		<!-- Two -->
+			
+
+		<!-- Three -->
+              <div id="testimonial" class="testimonial" >
+                  <asp:ContentPlaceHolder ID="ContentPlaceHolder1" runat="server">
+                      <table style="width:100%;">
+                          <tr>
+                              <td>&nbsp;</td>
+                              <td>&nbsp;</td>
+                              <td>&nbsp;</td>
+                          </tr>
+                          <tr>
+                              <td>&nbsp;</td>
+                              <td>&nbsp;</td>
+                              <td>&nbsp;</td>
+                          </tr>
+                          <tr>
+                              <td>&nbsp;</td>
+                              <td>&nbsp;</td>
+                              <td>&nbsp;</td>
+                          </tr>
+                      </table>
+                  </asp:ContentPlaceHolder>
+                  </div>
+        
+
+		<!-- Footer -->
+			<div id="Div1" >
+                 <section id="footer">
+				<h4>Student Login </h4>
+			</section>
+                  </div>
+
+		<!-- Scripts -->
+			<script src="assets/js/jquery.min.js"></script>
+			<script src="assets/js/skel.min.js"></script>
+			<script src="assets/js/util.js"></script>
+			<script src="assets/js/main.js"></script>
+
+	</body>
+</html>

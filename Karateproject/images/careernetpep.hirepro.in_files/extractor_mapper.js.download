@@ -1,0 +1,639 @@
+function loadSourceByType(sourceType) {
+    if ($("#sources").length <= 0) {
+        return false;
+    }
+    var source_type_id = $('#' + sourceType).val();
+    source_type_id = parseInt(source_type_id);
+    $("#sources").html("");
+    if (isNaN(source_type_id) === true) {
+        if ($('#sourcename_div').length > 0) {
+            $('#sourcename_div').css("display", "none");
+        }
+        if ($('#sourceemail_div').length > 0) {
+            $('#sourceemail_div').css("display", "none");
+        }
+        refreshBootsrapSelectPicker('sources');
+        return;
+    }
+    if (source_type_id === 0 || source_type_id === 3) {
+        if ($('#sourcename_div').length > 0) {
+            $('#sourcename_div').css("display", "");
+        }
+        if ($('#sourceemail_div').length > 0) {
+            $('#sourceemail_div').css("display", "");
+        }
+        if ($('#sources').length > 0) {
+            $('#sources').attr("disabled", true);
+            $('#sources_div').css("display", "none");
+            refreshBootsrapSelectPicker('sources');
+        }
+        return;
+    } else {
+        if ($('#sourcename_div').length > 0) {
+            $('#sourcename').val(null);
+            $('#sourcename_div').css("display", "none");
+        }
+        if ($('#sourceemail_div').length > 0) {
+            $('#sourceemail').val(null);
+            $('#sourceemail_div').css("display", "none");
+        }
+        if ($('#sources').length > 0) {
+            $('#sources').removeAttr("disabled");
+            $('#sources_div').css("display", "");
+            refreshBootsrapSelectPicker('sources');
+        }
+    }
+    var POSTDATA = "action=getallsourcesforcombo&source_type=" + encodeURIComponent(source_type_id);
+    POSTDATA += "&registrationid=" + encodeURIComponent($("#registrationformid").val());
+    callservicebyajax(POSTDATA, "mserver/registrationserver.php", function () {
+        $("#sources").html(ajaxResponse);
+        refreshBootsrapSelectPicker('sources');
+    });
+
+}
+
+/*function ressetFormForExtraction() {
+ $("#registrationform input[type=text]").val("");
+ $("#registrationform input[type=email]").val("");
+ $("#registrationform .selectpicker").val('default');
+ $('input[name="gender"]').attr('checked', false);
+ $('input[name="marital"]').attr('checked', false);
+ $('.selectpicker').selectpicker('refresh');
+ }*/
+
+function clearTextControlsData(controls) {
+    for (var item in controls) {
+        $("#" + controls[item]).val("");
+    }
+}
+function clearDropDownControlsData(controls) {
+    for (var item in controls) {
+        $("#" + controls[item]).val("default");
+    }
+}
+function clearRadioControlsData(controls) {
+    for (var item in controls) {
+        $('input[name="' + controls[item] + '"]').attr('checked', false);
+    }
+}
+function ressetFormForExtraction() {
+    var txtControls = ["email", "alternateemail", "mobile", "alternate_mobile", "fname",
+        "dob", "passportnumber", "pannumber", "tenthboard", "tenthmarks", "twelthmarks",
+        "twelthboard", "other_ugcollege", "other_ugbranch", "other_ugdegree", "ugpercentage",
+        "other_ugcollege", "other_pgbranch", "other_pgdegree", "pgpercentage", "other_hi1_branch",
+        "other_hi1_college", "other_hi1_degree", "hi1_percentage", "other_hi2_branch", "other_hi2_college",
+        "other_hi2_degree", "hi2_percentage", "other_hi_branch", "other_hi_college", "other_hi_degree", "hi_percentage",
+        "employer1", "other_company1", "designation1", "employer2", "other_company2",
+        "designation2", "employer3", "other_company3", "designation3", "employer4",
+        "other_company4", "designation4"];
+    clearTextControlsData(txtControls);
+    var radioControls = ["gender", "marital"];
+    clearRadioControlsData(radioControls);
+    var dropDownControls = ["tenthyop", "ugdegree", "ugbranch", "ugcollege", "ugyop",
+        "pgdegree", "pgbranch", "pgcollege", "pgyop", "hi1_degree", "hi1_branch", "hi1_college",
+        "hi1_yop", "hi2_degree", "hi2_branch", "hi2_college", "hi2_yop",
+        "hi_degree", "hi_branch", "hi_college", "hi_yop",
+        "role1", "company1", "expfrommonth1", "expfromyear1", "exptomonth1", "exptoyear1",
+        "role2", "company2", "expfrommonth2", "expfromyear2", "exptomonth2", "exptoyear2",
+        "role3", "company3", "expfrommonth3", "expfromyear3", "exptomonth3", "exptoyear3",
+        "role4", "company4", "expfrommonth4", "expfromyear4", "exptomonth4", "exptoyear4"];
+    clearDropDownControlsData(dropDownControls);
+    refreshBootsrapSelectPicker();
+}
+function mapExtractedDetails(data) {
+    var json_obj = jQuery.parseJSON(data);
+    var ugapplied, pgapplied, h1applied, h2applied, emp1applied1, empapplied2, empapplied3, empapplied4;
+    ugapplied = pgapplied = h1applied = h2applied = false;
+    emp1applied1 = empapplied2 = empapplied3 = empapplied4 = false;
+    if ("fullname" in json_obj) {
+        if ($('#fullname').length > 0 && (!$('#fullname').val() || $('#fullname').val().length == 0)) {
+            $('#fullname').val(json_obj.fullname);
+        } else if ($('#fname').length > 0 && (!$('#fname').val() || $('#fname').val().length == 0)) {
+            $('#fname').val(json_obj.fullname);
+        }
+
+    }
+    if ("email" in json_obj) {
+        if ($('#email').length > 0 && (!$('#email').val() || $('#email').val().length == 0)) {
+            $('#email').val(json_obj.email);
+        }
+    }
+    if ("alternateemail" in json_obj) {
+        if ($('#alternateemail').length > 0 && (!$('#alternateemail').val() || $('#alternateemail').val().length == 0)) {
+            $('#alternateemail').val(json_obj.alternateemail);
+        }
+    }
+    if ("gender" in json_obj) {
+        if ($('input:radio[name="gender"]').length > 0 && $('input:radio[name="gender"]:checked').length <= 0) {
+            if (json_obj.gender === '1') {
+                $('input:radio[name="gender"][value="1"]').prop('checked', true);
+            } else if (json_obj.gender === '1') {
+                $('input:radio[name="gender"][value="2"]').prop('checked', true);
+            }
+        }
+    }
+    if ("marital" in json_obj) {
+        if ($('input:radio[name="marital"]').length > 0 && $('input:radio[name="marital"]:checked').length <= 0) {
+            if (json_obj.marital === '1') {
+                $('input:radio[name="marital"][value="1"]').prop('checked', true);
+            } else if (json_obj.gender === '1') {
+                $('input:radio[name="marital"][value="2"]').prop('checked', true);
+            }
+        }
+    }
+    if ("dob" in json_obj) {
+        if ($('#dob').length > 0 && (!$('#dob').val() || $('#dob').val().length == 0)) {
+            var d = new Date(json_obj.dob);
+            $('#dob').datepicker("update", new Date(d.getFullYear(),
+                    d.getMonth(),
+                    d.getDate()));
+        }
+    }
+    if ("mobile" in json_obj) {
+        if ($('#mobile').length > 0 && (!$('#mobile').val() || $('#mobile').val().length == 0)) {
+            $('#mobile').val(json_obj.mobile);
+        }
+    }
+    if ("alternate_mobile" in json_obj) {
+        if ($('#alternate_mobile').length > 0 && (!$('#alternate_mobile').val() || $('#alternate_mobile').val().length == 0)) {
+            $('#alternate_mobile').val(json_obj.alternate_mobile);
+        }
+    }
+    if ("passportnumber" in json_obj) {
+        if ($('#passportnumber').length > 0 && (!$('#passportnumber').val() || $('#passportnumber').val().length == 0)) {
+            $('#passportnumber').val(json_obj.passportnumber);
+        }
+    }
+    if ("pannumber" in json_obj) {
+        if ($('#pannumber').length > 0 && (!$('#pannumber').val() || $('#pannumber').val().length == 0)) {
+            $('#pannumber').val(json_obj.pannumber);
+        }
+    }
+    if ("tenthyop" in json_obj) {
+        if ($('#tenthyop').length > 0 && (!$('#tenthyop').val() || $('#tenthyop').val().length == 0)) {
+            $('select[name=tenthyop]').val(json_obj.tenthyop);
+        }
+    }
+    if ("tenthboard" in json_obj) {
+        if ($('#tenthboard').length > 0 && (!$('#tenthboard').val() || $('#tenthboard').val().length == 0)) {
+            $('#tenthboard').val(json_obj.tenthboard);
+        }
+    }
+    if ("tenthmarks" in json_obj) {
+        if ($('#tenthmarks').length > 0 && (!$('#tenthmarks').val() || $('#tenthmarks').val().length == 0)) {
+            $('#tenthmarks').val(json_obj.tenthmarks);
+        }
+    }
+    if ("twelthyop" in json_obj) {
+        if ($('#twelthyop').length > 0 && (!$('#twelthyop').val() || $('#twelthyop').val().length == 0)) {
+            $('select[name=twelthyop]').val(json_obj.twelthyop);
+        }
+    }
+    if ("twelthboard" in json_obj) {
+        if ($('#twelthboard').length > 0 && (!$('#twelthboard').val() || $('#twelthboard').val().length == 0)) {
+            $('#twelthboard').val(json_obj.twelthboard);
+        }
+    }
+    if ("twelthmarks" in json_obj) {
+        if ($('#twelthmarks').length > 0 && (!$('#twelthmarks').val() || $('#twelthmarks').val().length == 0)) {
+            $('#twelthmarks').val(json_obj.twelthmarks);
+        }
+    }
+    var edu_profile = {};
+    if ("hi_percentage" in json_obj || "hi_yop" in json_obj || "hi_branch" in json_obj || "other_hi_branch" in json_obj || "hi_degree" in json_obj || "other_hi_degree" in json_obj
+            || "hi_college" in json_obj || "other_hi_college" in json_obj) {
+        edu_profile.college = ("hi_college" in json_obj) ? json_obj.hi_college : null;
+        edu_profile.othercollege = ("other_hi_college" in json_obj) ? json_obj.other_hi_college : null;
+        edu_profile.branch = ("hi_branch" in json_obj) ? json_obj.hi_branch : null;
+        edu_profile.otherbranch = ("other_hi_branch" in json_obj) ? json_obj.other_hi_branch : null;
+        edu_profile.degree = ("hi_degree" in json_obj) ? json_obj.hi_degree : null;
+        edu_profile.otherdegree = ("other_hi_degree" in json_obj) ? json_obj.other_hi_degree : null;
+        edu_profile.yop = ("hi_yop" in json_obj) ? json_obj.hi_yop : null;
+        edu_profile.percentage = ("hi_percentage" in json_obj) ? json_obj.hi_percentage : null;
+        if (is_hi_profile_exists() === true) {
+            hi_mappings(edu_profile);
+
+        } else if (is_hi2_profile_exists() === true) {
+            hi2_mappings(edu_profile);
+            h2applied = true;
+        } else if (is_hi1_profile_exists() === true) {
+            hi1_mappings(edu_profile);
+            h1applied = true;
+        } else if (is_pg_profile_exists() === true) {
+            pg_mappings(edu_profile);
+            pgapplied = true;
+        } else if (is_ug_profile_exists() === true) {
+            ug_mappings(edu_profile);
+            ugapplied = true;
+        }
+    }
+    if ("hi2_percentage" in json_obj || "hi2_yop" in json_obj || "hi2_branch" in json_obj || "hi2_degree" in json_obj || "hi2_college" in json_obj) {
+        edu_profile = {};
+        edu_profile.college = ("hi2_college" in json_obj) ? json_obj.hi2_college : null;
+        edu_profile.othercollege = ("other_hi2_college" in json_obj) ? json_obj.other_hi2_college : null;
+        edu_profile.branch = ("hi2_branch" in json_obj) ? json_obj.hi2_branch : null;
+        edu_profile.otherbranch = ("other_hi2_branch" in json_obj) ? json_obj.other_hi2_branch : null;
+        edu_profile.degree = ("hi2_degree" in json_obj) ? json_obj.hi2_degree : null;
+        edu_profile.otherdegree = ("other_hi2_degree" in json_obj) ? json_obj.other_hi2_degree : null;
+        edu_profile.yop = ("hi2_yop" in json_obj) ? json_obj.hi2_yop : null;
+        edu_profile.percentage = ("hi2_percentage" in json_obj) ? json_obj.hi2_percentage : null;
+        if (h2applied === false && is_hi2_profile_exists() === true) {
+            hi2_mappings(edu_profile);
+        } else if (h1applied === false && is_hi1_profile_exists() === true) {
+            hi1_mappings(edu_profile);
+            h1applied = true;
+        } else if (pgapplied === false && is_pg_profile_exists() === true) {
+            pg_mappings(edu_profile);
+            pgapplied = true;
+        } else if (ugapplied === false && is_ug_profile_exists() === true) {
+            ug_mappings(edu_profile);
+            ugapplied = true;
+        }
+    }
+
+    if ("hi1_percentage" in json_obj || "hi1_yop" in json_obj || "hi1_branch" in json_obj || "hi1_degree" in json_obj || "hi1_college" in json_obj) {
+        edu_profile = {};
+        edu_profile.college = ("hi1_college" in json_obj) ? json_obj.hi1_college : null;
+        edu_profile.othercollege = ("other_hi1_college" in json_obj) ? json_obj.other_hi1_college : null;
+        edu_profile.branch = ("hi1_branch" in json_obj) ? json_obj.hi1_branch : null;
+        edu_profile.otherbranch = ("other_hi1_branch" in json_obj) ? json_obj.other_hi1_branch : null;
+        edu_profile.degree = ("hi1_degree" in json_obj) ? json_obj.hi1_degree : null;
+        edu_profile.otherdegree = ("other_hi1_degree" in json_obj) ? json_obj.other_hi1_degree : null;
+        edu_profile.yop = ("hi1_yop" in json_obj) ? json_obj.hi1_yop : null;
+        edu_profile.percentage = ("hi1_percentage" in json_obj) ? json_obj.hi1_percentage : null;
+        if (h1applied === false && is_hi1_profile_exists() === true) {
+            hi1_mappings(edu_profile);
+        } else if (pgapplied === false && is_pg_profile_exists() === true) {
+            pg_mappings(edu_profile);
+            pgapplied = true;
+        } else if (ugapplied === false && is_ug_profile_exists() === true) {
+            ug_mappings(edu_profile);
+            ugapplied = true;
+        }
+    }
+    if ("pgpercentage" in json_obj || "pgyop" in json_obj || "pgbranch" in json_obj || "pgdegree" in json_obj || "pgcollege" in json_obj) {
+        edu_profile = {};
+        edu_profile.college = ("pgcollege" in json_obj) ? json_obj.pgcollege : null;
+        edu_profile.othercollege = ("other_pgcollege" in json_obj) ? json_obj.other_pgcollege : null;
+        edu_profile.branch = ("pgbranch" in json_obj) ? json_obj.pgbranch : null;
+        edu_profile.otherbranch = ("other_pgbranch" in json_obj) ? json_obj.other_pgbranch : null;
+        edu_profile.degree = ("pgdegree" in json_obj) ? json_obj.pgdegree : null;
+        edu_profile.otherdegree = ("other_pgdegree" in json_obj) ? json_obj.other_pgdegree : null;
+        edu_profile.yop = ("pgyop" in json_obj) ? json_obj.pgyop : null;
+        edu_profile.percentage = ("pgpercentage" in json_obj) ? json_obj.pgpercentage : null;
+        if (pgapplied === false && is_pg_profile_exists() === true) {
+            pg_mappings(edu_profile);
+        } else if (ugapplied === false && is_ug_profile_exists() === true) {
+            ug_mappings(edu_profile);
+            ugapplied = true;
+        }
+    }
+    if ("ugpercentage" in json_obj || "ugyop" in json_obj || "ugbranch" in json_obj || "ugdegree" in json_obj || "ugcollege" in json_obj) {
+        edu_profile = {};
+        edu_profile.college = ("ugcollege" in json_obj) ? json_obj.ugcollege : null;
+        edu_profile.othercollege = ("other_ugcollege" in json_obj) ? json_obj.other_ugcollege : null;
+        edu_profile.branch = ("ugbranch" in json_obj) ? json_obj.ugbranch : null;
+        edu_profile.otherbranch = ("other_ugbranch" in json_obj) ? json_obj.other_ugbranch : null;
+        edu_profile.degree = ("ugdegree" in json_obj) ? json_obj.ugdegree : null;
+        edu_profile.otherdegree = ("other_ugdegree" in json_obj) ? json_obj.other_ugdegree : null;
+        edu_profile.yop = ("ugyop" in json_obj) ? json_obj.ugyop : null;
+        edu_profile.percentage = ("ugpercentage" in json_obj) ? json_obj.ugpercentage : null;
+        if (ugapplied === false && is_ug_profile_exists() === true) {
+            ug_mappings(edu_profile);
+        }
+    }
+    var work_profile = {}, seq = 1;
+    if ("employer1" in json_obj || "company1" in json_obj || "role1" in json_obj || "designation1" in json_obj || "expfrommonth1" in json_obj || "expfromyear1" in json_obj || "exptoyear1" in json_obj || "exptomonth1" in json_obj) {
+        work_profile = {};
+        work_profile.company = ("company1" in json_obj) ? json_obj.company1 : null;
+        work_profile.companyother = ("employer1" in json_obj) ? json_obj.employer1 : null;
+        work_profile.role = ("role1" in json_obj) ? json_obj.role1 : null;
+        work_profile.roleother = ("designation1" in json_obj) ? json_obj.designation1 : null;
+        work_profile.expfrommonth = ("expfrommonth1" in json_obj) ? json_obj.expfrommonth1 : null;
+        work_profile.expfromyear = ("expfromyear1" in json_obj) ? json_obj.expfromyear1 : null;
+        work_profile.exptomonth = ("exptomonth1" in json_obj) ? json_obj.exptomonth1 : null;
+        work_profile.exptoyear = ("exptoyear1" in json_obj) ? json_obj.exptoyear1 : null;
+        if (emp1applied1 === false && is_employer_exists(1) === true) {
+            employer_mapping(work_profile, 1);
+            emp1applied1 = true;
+        } else if (empapplied2 === false && is_employer_exists(2) === true) {
+            employer_mapping(work_profile, 2);
+            empapplied2 = true;
+        } else if (empapplied3 === false && is_employer_exists(3) === true) {
+            employer_mapping(work_profile, 3);
+            empapplied3 = true;
+        } else if (empapplied4 === false && is_employer_exists(4) === true) {
+            employer_mapping(work_profile, 4);
+            empapplied4 = true;
+        }
+    }
+    if ("employer2" in json_obj || "company2" in json_obj || "role2" in json_obj || "designation2" in json_obj
+            || "expfrommonth2" in json_obj || "expfromyear2" in json_obj || "exptoyear2" in json_obj || "exptomonth2" in json_obj) {
+        work_profile = {};
+        work_profile.company = ("company2" in json_obj) ? json_obj.company2 : null;
+        work_profile.companyother = ("employer2" in json_obj) ? json_obj.employer2 : null;
+        work_profile.role = ("role2" in json_obj) ? json_obj.role2 : null;
+        work_profile.roleother = ("designation2" in json_obj) ? json_obj.designation2 : null;
+        work_profile.expfrommonth = ("expfrommonth2" in json_obj) ? json_obj.expfrommonth2 : null;
+        work_profile.expfromyear = ("expfromyear2" in json_obj) ? json_obj.expfromyear2 : null;
+        work_profile.exptomonth = ("exptomonth2" in json_obj) ? json_obj.exptomonth2 : null;
+        work_profile.exptoyear = ("exptoyear2" in json_obj) ? json_obj.exptoyear2 : null;
+        if (emp1applied1 === false && is_employer_exists(1) === true) {
+            employer_mapping(work_profile, 1);
+            emp1applied1 = true;
+        } else if (empapplied2 === false && is_employer_exists(2) === true) {
+            employer_mapping(work_profile, 2);
+            empapplied2 = true;
+        } else if (empapplied3 === false && is_employer_exists(3) === true) {
+            employer_mapping(work_profile, 3);
+            empapplied3 = true;
+        } else if (empapplied4 === false && is_employer_exists(4) === true) {
+            employer_mapping(work_profile, 4);
+            empapplied4 = true;
+        }
+    }
+    if ("employer3" in json_obj || "company3" in json_obj || "role3" in json_obj || "designation3" in json_obj || "expfrommonth3" in json_obj || "expfromyear3" in json_obj || "exptoyear3" in json_obj || "exptomonth3" in json_obj) {
+        work_profile = {};
+        work_profile.company = ("company3" in json_obj) ? json_obj.company3 : null;
+        work_profile.companyother = ("employer3" in json_obj) ? json_obj.employer3 : null;
+        work_profile.role = ("role3" in json_obj) ? json_obj.role3 : null;
+        work_profile.roleother = ("designation3" in json_obj) ? json_obj.designation3 : null;
+        work_profile.expfrommonth = ("expfrommonth3" in json_obj) ? json_obj.expfrommonth3 : null;
+        work_profile.expfromyear = ("expfromyear3" in json_obj) ? json_obj.expfromyear3 : null;
+        work_profile.exptomonth = ("exptomonth3" in json_obj) ? json_obj.exptomonth3 : null;
+        work_profile.exptoyear = ("exptoyear3" in json_obj) ? json_obj.exptoyear3 : null;
+        if (emp1applied1 === false && is_employer_exists(1) === true) {
+            employer_mapping(work_profile, 1);
+            emp1applied1 = true;
+        } else if (empapplied2 === false && is_employer_exists(2) === true) {
+            employer_mapping(work_profile, 2);
+            empapplied2 = true;
+        } else if (empapplied3 === false && is_employer_exists(3) === true) {
+            employer_mapping(work_profile, 3);
+            empapplied3 = true;
+        } else if (empapplied4 === false && is_employer_exists(4) === true) {
+            employer_mapping(work_profile, 4);
+            empapplied4 = true;
+        }
+    }
+    if ("employer4" in json_obj || "company4" in json_obj || "role4" in json_obj || "designation4" in json_obj || "expfrommonth4" in json_obj || "expfromyear4" in json_obj || "exptoyear4" in json_obj || "exptomonth4" in json_obj) {
+        work_profile = {};
+        work_profile.company = ("company4" in json_obj) ? json_obj.company4 : null;
+        work_profile.companyother = ("employer4" in json_obj) ? json_obj.employer4 : null;
+        work_profile.role = ("role4" in json_obj) ? json_obj.role4 : null;
+        work_profile.roleother = ("designation4" in json_obj) ? json_obj.designation4 : null;
+        work_profile.expfrommonth = ("expfrommonth4" in json_obj) ? json_obj.expfrommonth4 : null;
+        work_profile.expfromyear = ("expfromyear4" in json_obj) ? json_obj.expfromyear4 : null;
+        work_profile.exptomonth = ("exptomonth4" in json_obj) ? json_obj.exptomonth4 : null;
+        work_profile.exptoyear = ("exptoyear4" in json_obj) ? json_obj.exptoyear4 : null;
+        if (emp1applied1 === false && is_employer_exists(1) === true) {
+            employer_mapping(work_profile, 1);
+            emp1applied1 = true;
+        } else if (empapplied2 === false && is_employer_exists(2) === true) {
+            employer_mapping(work_profile, 2);
+            empapplied2 = true;
+        } else if (empapplied3 === false && is_employer_exists(3) === true) {
+            employer_mapping(work_profile, 3);
+            empapplied3 = true;
+        } else if (empapplied4 === false && is_employer_exists(4) === true) {
+            employer_mapping(work_profile, 4);
+            empapplied4 = true;
+        }
+    }
+    refreshBootsrapSelectPicker();
+}
+
+function ug_mappings(json_obj) {
+    if ($('#ugcollege').length > 0 && (!$('#ugcollege').val() || $('#ugcollege').val().length == 0)) {
+        $('select[name=ugcollege]').selectpicker('val', json_obj.college);
+        if (json_obj.othercollege !== null) {
+            $('#other_ugcollege').val(json_obj.othercollege);
+            openOtherselect("other_ugcollege");
+        }
+    }
+    if ($('#ugbranch').length > 0 && (!$('#ugbranch').val() || $('#ugbranch').val().length == 0)) {
+        $('select[name=ugbranch]').selectpicker('val', json_obj.branch);
+        if (json_obj.otherbranch !== null) {
+            $('#other_ugbranch').val(json_obj.otherbranch);
+            openOtherselect("other_ugbranch");
+        }
+    }
+    if ($('#ugpercentage').length > 0 && (!$('#ugpercentage').val() || $('#ugpercentage').val().length == 0)) {
+        $('#ugpercentage').val(json_obj.percentage);
+    }
+    if ($('#ugyop').length > 0 && $('#ugyop').val().length == 0) {
+        $('#ugyop').val(json_obj.yop);
+    }
+    if ($('#ugdegree').length > 0 && (!$('#ugdegree').val() || $('#ugdegree').val().length == 0)) {
+        $('select[name=ugdegree]').selectpicker('val', json_obj.degree);
+        if (json_obj.otherdegree !== null) {
+            $('#other_ugdegree').val(json_obj.otherdegree);
+            openOtherselect("other_ugdegree");
+        }
+    }
+}
+
+function is_ug_profile_exists() {
+    if ($('#ugpercentage').length > 0 || $('#ugyop').length > 0 || $('#ugbranch').length > 0 || $('#ugdegree').length > 0 || $('#ugcollege').length > 0) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+
+function pg_mappings(json_obj) {
+    if ($('#pgcollege').length > 0 && (!$('#pgcollege').val() || $('#pgcollege').val().length == 0)) {
+        $('select[name=pgcollege]').selectpicker('val', json_obj.college);
+        if (json_obj.othercollege !== null) {
+            $('#other_pgcollege').val(json_obj.othercollege);
+            openOtherselect("other_pgcollege");
+        }
+    }
+    if ($('#pgyop').length > 0 && (!$('#pgyop').val() || $('#pgyop').val().length == 0)) {
+        $('#pgyop').val(json_obj.yop);
+    }
+    if ($('#pgpercentage').length > 0 && (!$('#pgpercentage').val() || $('#pgpercentage').val().length == 0)) {
+        $('#pgpercentage').val(json_obj.percentage);
+    }
+    if ($('#pgbranch').length > 0 && (!$('#pgbranch').val() || $('#pgbranch').val().length == 0)) {
+        $('select[name=pgbranch]').selectpicker('val', json_obj.branch);
+        if (json_obj.otherbranch !== null) {
+            $('#other_pgbranch').val(json_obj.otherbranch);
+            openOtherselect("other_pgbranch");
+        }
+    }
+    if ($('#pgdegree').length > 0 && (!$('#pgdegree').val() || $('#pgdegree').val().length == 0)) {
+        $('select[name=pgdegree]').selectpicker('val', json_obj.degree);
+        if (json_obj.otherdegree !== null) {
+            $('#other_pgdegree').val(json_obj.otherdegree);
+            openOtherselect("other_pgdegree");
+        }
+    }
+
+}
+
+function is_pg_profile_exists() {
+    if ($('#pgpercentage').length > 0 || $('#pgyop').length > 0 || $('#pgbranch').length > 0 || $('#pgdegree').length > 0 || $('#pgcollege').length > 0) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+function hi1_mappings(json_obj) {
+    if ($('#hi1_percentage').length > 0 && (!$('#hi1_percentage').val() || $('#hi1_percentage').val().length == 0)) {
+        $('#hi1_percentage').val(json_obj.percentage);
+    }
+    if ($('#hi1_yop').length > 0 && (!$('#hi1_yop').val() || $('#hi1_yop').val().length == 0)) {
+        $('#hi1_yop').val(json_obj.yop);
+    }
+    if ($('#hi1_branch').length > 0 && (!$('#hi1_branch').val() || $('#hi1_branch').val().length == 0)) {
+        $('select[name=hi1_branch]').selectpicker('val', json_obj.branch);
+        if (json_obj.otherbranch !== null) {
+            $('#other_hi1_branch').val(json_obj.otherbranch);
+            openOtherselect("other_hi1_branch");
+        }
+    }
+    if ($('#hi1_degree').length > 0 && (!$('#hi1_degree').val() || $('#hi1_degree').val().length == 0)) {
+        $('select[name=hi1_degree]').selectpicker('val', json_obj.degree);
+        if (json_obj.otherdegree !== null) {
+            $('#other_hi1_degree').val(json_obj.otherdegree);
+            openOtherselect("other_hi1_degree");
+        }
+    }
+    if ($('#hi1_college').length > 0 && (!$('#hi1_college').val() || $('#hi1_college').val().length == 0)) {
+        $('select[name=hi1_college]').selectpicker('val', json_obj.college);
+        if (json_obj.othercollege !== null) {
+            $('#other_hi1_college').val(json_obj.othercollege);
+            openOtherselect("other_hi1_college   ");
+        }
+    }
+}
+
+function is_hi1_profile_exists() {
+    if ($('#hi1_percentage').length > 0 || $('#hi1_yop').length > 0 || $('#hi1_branch').length > 0 || $('#hi1_degree').length > 0 || $('#hi1_college').length > 0) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+function hi2_mappings(json_obj) {
+    if ($('#hi2_percentage').length > 0 && (!$('#hi2_percentage').val() || $('#hi2_percentage').val().length == 0)) {
+        $('#hi2_percentage').val(json_obj.percentage);
+    }
+    if ($('#hi2_yop').length > 0 && (!$('#hi2_yop').val() || $('#hi2_yop').val().length == 0)) {
+        $('#hi2_yop').val(json_obj.yop);
+    }
+    if ($('#hi2_branch').length > 0 && (!$('#hi2_branch').val() || $('#hi2_branch').val().length == 0)) {
+        $('select[name=hi2_branch]').selectpicker('val', json_obj.branch);
+        if (json_obj.otherbranch !== null) {
+            $('#other_hi2_branch').val(json_obj.otherbranch);
+            openOtherselect("other_hi2_branch");
+        }
+    }
+    if ($('#hi2_degree').length > 0 && (!$('#hi2_degree').val() || $('#hi2_degree').val().length == 0)) {
+        $('select[name=hi2_degree]').selectpicker('val', json_obj.degree);
+        if (json_obj.otherdegree !== null) {
+            $('#other_hi2_degree').val(json_obj.otherdegree);
+            openOtherselect("other_hi2_degree");
+        }
+    }
+    if ($('#hi2_college').length > 0 && (!$('#hi2_college').val() || $('#hi2_college').val().length == 0)) {
+        $('select[name=hi2_college]').selectpicker('val', json_obj.college);
+        if (json_obj.othercollege !== null) {
+            $('#other_hi2_college').val(json_obj.othercollege);
+            openOtherselect("other_hi2_college");
+        }
+    }
+}
+
+function is_hi2_profile_exists() {
+    if ($('#hi2_percentage').length > 0 || $('#hi2_yop').length > 0 || $('#hi2_branch').length > 0 || $('#hi2_degree').length > 0 || $('#hi2_college').length > 0) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+function hi_mappings(json_obj) {
+    if ($('#hi_percentage').length > 0 && (!$('#hi_percentage').val() || $('#hi_percentage').val().length == 0)) {
+        $('#hi_percentage').val(json_obj.percentage);
+    }
+    if ($('#hi_yop').length > 0 && (!$('#hi_yop').val() || $('#hi_yop').val().length == 0)) {
+        $('select[name=hi_yop]').selectpicker('val', json_obj.yop);
+    }
+    if ($('#hi_branch').length > 0 && (!$('#hi_branch').val() || $('#hi_branch').val().length == 0)) {
+        $('select[name=hi_branch]').selectpicker('val', json_obj.branch);
+        if (json_obj.otherbranch !== null) {
+            $('#other_hi_branch').val(json_obj.otherbranch);
+            openOtherselect("other_hi_branch");
+        }
+    }
+    if ($('#hi_degree').length > 0 && (!$('#hi_degree').val() || $('#hi_degree').val().length == 0)) {
+        $('select[name=hi_degree]').selectpicker('val', json_obj.degree);
+        if (json_obj.otherdegree !== null) {
+            $('#other_hi_degree').val(json_obj.otherdegree);
+            openOtherselect("other_hi_degree");
+        }
+    }
+    if ($('#hi_college').length > 0 && (!$('#hi_college').val() || $('#hi_college').val().length == 0)) {
+        $('select[name=hi_college]').selectpicker('val', json_obj.college);
+        if (json_obj.othercollege !== null) {
+            $('#other_hi_college').val(json_obj.othercollege);
+            openOtherselect("other_hi_college");
+        }
+    }
+}
+
+function employer_mapping(json_obj, seq) {
+    if ("companyother" in json_obj) {
+        if (json_obj.companyother !== null) {
+            if ($('#other_company' + seq).length > 0) {
+                $('#other_company' + seq).val(json_obj.companyother);
+                openOtherselect("other_company" + seq);
+            } else if ($('#employer' + seq).length > 0 && $('#employer' + seq).val().length == 0) {
+                $('#employer' + seq).val(json_obj.companyother);
+            }
+        }
+    }
+    if ("company" in json_obj && $('#company' + seq).length > 0 && (!$('#company' + seq).val() || $('#company' + seq).val().length == 0)) {
+        $('select[name=company' + seq + ']').selectpicker('val', json_obj.company);
+    }
+    if ("role" in json_obj && $('#role' + seq).length > 0 && (!$('#role' + seq).val() || $('#role' + seq).val().length == 0)) {
+        $('select[name=role' + seq + ']').selectpicker('val', json_obj.role);
+    }
+    if ("roleother" in json_obj && $('#designation' + seq).length > 0 && (!$('#designation' + seq).val() || $('#designation' + seq).val().length == 0)) {
+        $('#designation' + seq).val(json_obj.roleother);
+    }
+    if ("expfrommonth" in json_obj && $('#expfrommonth' + seq).length > 0 && (!$('#expfrommonth' + seq).val() || $('#expfrommonth' + seq).val().length == 0)) {
+        $('select[name=expfrommonth' + seq + ']').selectpicker('val', json_obj.expfrommonth);
+    }
+    if ("expfromyear" in json_obj && $('#expfromyear' + seq).length > 0 && (!$('#expfromyear' + seq).val() || $('#expfromyear' + seq).val().length == 0)) {
+        $('select[name=expfromyear' + seq + ']').selectpicker('val', json_obj.expfromyear);
+    }
+    if ("exptomonth" in json_obj && $('#exptomonth' + seq).length > 0 && (!$('#exptomonth' + seq).val() || $('#exptomonth' + seq).val().length == 0)) {
+        $('select[name=exptomonth' + seq + ']').selectpicker('val', json_obj.exptomonth);
+    }
+    if ("exptoyear" in json_obj && $('#exptoyear' + seq).length > 0 && (!$('#exptoyear' + seq).val() || $('#exptoyear' + seq).val().length == 0)) {
+        $('select[name=exptoyear' + seq + ']').selectpicker('val', json_obj.exptoyear);
+    }
+}
+
+function is_hi_profile_exists() {
+    if ($('#hi_percentage').length > 0 || $('#hi_yop').length > 0 || $('#hi_branch').length > 0 || $('#hi_degree').length > 0 || $('#hi_college').length > 0) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+function is_employer_exists(seq) {
+    if ($('#employer' + seq).length > 0 || $('#other_company' + seq).length > 0 || $('#company' + seq).length > 0 || $('#role' + seq).length > 0 || $('#designation' + seq).length > 0 || $('#expfrommonth' + seq).length > 0 || $('#expfromyear' + seq).length > 0 || $('#exptoyear' + seq).length > 0 || $('#exptomonth' + seq).length > 0) {
+        return true;
+    } else {
+        return false;
+    }
+
+}

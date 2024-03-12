@@ -1,0 +1,1891 @@
+var registrationcallbackfunction;
+var customCallbackFunction;
+var crpoevent = 0;
+var crpolocation = 0;
+var issecuritycheckdone = 0;
+var configuredevent = 0;
+var eventtype = '';
+var crpocandidate = 0;
+var crpojobrole = 0;
+var errormessage = "";
+var openWindow, assessment_url = "";
+var requestTimeZone = null;
+var validate_source_email_format = false;
+try {
+    requestTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+} catch (err) {
+    requestTimeZone = 'Asia/Calcutta';
+}
+
+function enablesubmit(id, buttonid) {
+    if ($('#' + id).is(':checked'))
+        $('#' + buttonid).attr('onclick', 'precheckregistrationvalues()');
+    else
+        $('#' + buttonid).attr('onclick', 'return false');
+}
+
+function trim(s) {
+    return $.trim(s);
+}
+
+function validateregistrationcode(redirectpage) {
+    var code, email;
+    var POSTDATA = "action=isPreregistrationExists";
+    if ($('#registrationcode').length > 0) {
+        code = $('#registrationcode').val();
+        if (code != '' && code != undefined) {
+            POSTDATA += "&registrationcode=" + encodeURIComponent(code);
+        } else {
+            errormessage += "<li>Invalid code</li>"
+            popupwarnings(errormessage);
+            return;
+        }
+    }
+    if ($('#registrationemail').length > 0) {
+        email = $('#registrationemail').val();
+        if (isValidEmailAddress(trim(email)))
+            POSTDATA += "&registrationemail=" + encodeURIComponent(email);
+        else {
+            errormessage += "<li>Invalid Email</li>"
+            popupwarnings(errormessage);
+            return;
+        }
+    }
+    startprocesspopupwindow();
+    callservicebyajax(POSTDATA, "mserver/registrationserver.php", callBackEmailValidationForRegistration);
+}
+function callBackEmailValidationForRegistration() {
+    if (!isNaN(ajaxResponse) && ajaxResponse != 0) {
+        POSTDATA = '';
+        if ($('#registrationcode').length > 0 && $('#registrationcode').val() != '' && $('#registrationcode').val() != undefined) {
+            code = $('#registrationcode').val();
+            POSTDATA = "code=" + encodeURIComponent(code);
+        } else if ($('#registrationemail').length > 0 && $('#registrationemail').val() != '' && $('#registrationemail').val() != undefined) {
+            email = $('#registrationemail').val();
+            POSTDATA = "email=" + encodeURIComponent(email);
+        }
+        POSTDATA += "&registrationid=" + encodeURIComponent($("#registrationformid").val());
+        callBackLandingPageOnEmailValidationForRegistration(POSTDATA, "registration/campus/completepreregistration.php")
+
+    } else {
+        $('#errordiv').addClass("label-danger").html(ajaxResponse);
+        stopprocesspopupwindow();
+    }
+}
+function callBackLandingPageOnEmailValidationForRegistration(POSTDATA, redirectpage) {
+    callservicebyajax(POSTDATA, redirectpage, function () {
+        $('#preregistrationvalidator').html("");
+        $('#registerationdiv').html(ajaxResponse);
+        stopprocesspopupwindow();
+    });
+}
+
+function prechkemailexists(value, id, callback) {
+    if (value != '') {
+        if (isValidEmailAddress(trim(value))) {
+            callback();
+        } else {
+            $("#" + id + "_div").addClass("has-error").removeClass("has-success");
+            errormessage = "<li>Invalid " + $('label[for="' + id + '"]').attr("title") + "</li>";
+            popupwarnings(errormessage);
+            $("#emaildiv").val('0');
+        }
+    } else {
+        $("#submitdiv").css("display", "block");
+        $("#" + id + "_div").addClass("has-error").removeClass("has-success");
+        errormessage = "<li>" + $('label[for="' + id + '"]').attr("title") + " cannot be blank</li>";
+        popupwarnings(errormessage);
+        $("#emaildiv").val('0');
+        $('#' + id).focus();
+    }
+}
+
+function prechkurnexists(value, callback, elementid) {
+    if (value != '') {
+        if ($('#email').length > 0) {
+            prechkemailexists($("#email").val(), 'email', callback);
+        } else {
+            if (callback)
+                callback();
+        }
+    } else {
+        $("#" + elementid + "_div").addClass("has-error").removeClass("has-success");
+        errormessage = "<li>Please specify valid " + $('label[for="' + elementid + '"]').attr("title") + "</li>";
+        popupwarnings(errormessage);
+        $('#' + elementid).focus();
+    }
+}
+
+function precheckregistrationvalues(callbackfn) {
+    errormessage = "";
+    if ($("#urn2").length > 0) {
+        var urnvalue = $("#urn2").val();
+        prechkurnexists(urnvalue, function () {
+            submitRegistration(callbackfn);
+        }, 'urn2');
+    } else if ($("#urn").length > 0) {
+        var urnvalue = $("#urn").val();
+        prechkurnexists(urnvalue, function () {
+            submitRegistration(callbackfn);
+        }, 'urn');
+    } else if ($("#email").length > 0) {
+        var email = $("#email").val();
+        prechkemailexists(email, 'email', function () {
+            submitRegistration();
+        });
+    }
+}
+
+function submitRegistration(callbackfn) {
+    errormessage = "";
+    var flag = 1;
+    if ($("#email").length > 0) {
+        if ($('#email').attr('required')) {
+            if (!isValidEmailAddress(trim($("#email").val()))) {
+                $('#email').focus();
+                errormessage += "<li>Please specify " + $('label[for="email"]').attr("title") + "</li>";
+                popupwarnings(errormessage);
+                return false;
+            }
+            $("#email_div").removeClass("has-error").addClass("has-success");
+        }
+    }
+    if ($("#alternateemail").length > 0) {
+        if ($('#alternateemail').attr('required')) {            
+            if (!isValidEmailAddress(trim($("#alternateemail").val()))) {
+                errormessage += "<li>Please specify valid " + $('label[for="alternateemail"]').attr("title") + "</li>";
+                popupwarnings(errormessage);
+                $("#alternateemail_div").addClass("has-error").removeClass("has-success");
+                return false;
+            }
+        }
+    }
+    if (validate_source_email_format) {
+        if ($("#sourceemail").length > 0) {
+            if ($('#sourceemail').attr('required')) {
+                if (!isValidEmailAddress(trim($("#sourceemail").val()))) {
+                    errormessage += "<li>Please specify valid source email </li>";
+                    popupwarnings(errormessage);
+                    $("#sourceemail").addClass("has-error").removeClass("has-success");
+                    return false;
+                }
+            }
+        }
+    }
+
+    flag = validatenumbercontrol("mobile", flag, 10)
+    flag = validatenumbercontrol("alternate_mobile", flag, 10)
+    flag = getvalidationFlag("fname", flag);
+    flag = nameValidation("fname", flag);
+    flag = getvalidationFlag("mname", flag);
+    flag = getvalidationFlag("lname", flag);
+    if (ClientAlias.indexOf("accenture") >= 0) {
+        flag = nameValidation("lname", flag);
+    }
+    flag = getvalidationFlag("fullname", flag);
+    flag = nameValidation("fullname", flag);
+    flag = getvalidationFlag("fathername", flag);
+    flag = getdatetimevalidation("dob", flag);
+    flag = getvalidationFlag("nationality", flag);
+    flag = validatenumbercontrol("aadhaarno", flag, 12)
+    flag = getvalidationFlag("currentctc", flag)
+    flag = getradiovalidationFlag("marital", flag);
+    flag = getradiovalidationFlag("gender", flag);
+    flag = getvalidationFlag("passportnumber", flag);
+    flag = getvalidationFlag("pannumber", flag);
+    flag = getvalidationFlag("tenthboard", flag);
+    flag = getvalidationFlag("tenthboard2", flag);
+    flag = getvalidationFlag("tenthstate", flag);
+    flag = getvalidationFlag("tenthcity", flag);
+    flag = getvalidationFlag("tenthmarks", flag);
+    flag = percentageValidation('tenthmarks', flag);
+    flag = getvalidationFlag("tenthmarksoutof", flag);
+    flag = percentageOutOfValidation('tenthmarksoutof', 'tenthmarks', flag);
+    flag = getvalidationFlag("tenthyop", flag);
+    flag = getvalidationFlag("twelthboard", flag);
+    flag = getvalidationFlag("twelthboard2", flag);
+    flag = getvalidationFlag("twelthstate", flag);
+    flag = getvalidationFlag("twelthcity", flag);
+    flag = getvalidationFlag("twelthmarks", flag);
+    flag = percentageValidation('twelthmarks', flag);
+    flag = getvalidationFlag("twelthmarksoutof", flag);
+    flag = percentageOutOfValidation('twelthmarksoutof', 'twelthmarks', flag);
+    flag = getvalidationFlag("twelthyop", flag);
+    flag = getSelectControlvalidationFlag("ugdegree", flag);
+    flag = getSelectControlvalidationFlag("ugbranch", flag);
+    flag = getSelectControlvalidationFlag("ugcollege", flag);
+    flag = getSelectControlvalidationFlag("uguniversity", flag);
+    flag = getvalidationFlag("ugstate", flag);
+    flag = getvalidationFlag("ugcity", flag);
+    flag = getvalidationFlag("ugyop", flag);
+    flag = getradiovalidationFlag("uggrade", flag);
+    flag = getvalidationFlag("ugpercentage", flag);
+    flag = percentageValidation('ugpercentage', flag, 'uggrade');
+    flag = getvalidationFlag("ugmarksoutof", flag);
+    flag = percentageOutOfValidation("ugmarksoutof", "ugpercentage", flag);
+    flag = getSelectControlvalidationFlag("pgdegree", flag);
+    flag = getSelectControlvalidationFlag("pgbranch", flag);
+    flag = getSelectControlvalidationFlag("pgcollege", flag);
+    flag = getSelectControlvalidationFlag("pguniversity", flag);
+    flag = getvalidationFlag("pgstate", flag);
+    flag = getvalidationFlag("pgcity", flag);
+    flag = getvalidationFlag("pgyop", flag);
+    flag = getradiovalidationFlag("pggrade", flag);
+    flag = getvalidationFlag("pgpercentage", flag);
+    flag = percentageValidation('pgpercentage', flag, 'pggrade');
+    flag = getvalidationFlag("pgmarksoutof", flag);
+    flag = percentageOutOfValidation("pgmarksoutof", "pgpercentage", flag);
+    flag = getSelectControlvalidationFlag("hi1_degree", flag);
+    flag = getSelectControlvalidationFlag("hi1_branch", flag);
+    flag = getSelectControlvalidationFlag("hi1_college", flag);
+    flag = getSelectControlvalidationFlag("hi1university", flag);
+    flag = getvalidationFlag("hi1state", flag);
+    flag = getvalidationFlag("hi1city", flag);
+    flag = getvalidationFlag("hi1_yop", flag);
+    flag = getradiovalidationFlag("hi1_grade", flag);
+    flag = getvalidationFlag("hi1_percentage", flag);
+    flag = percentageValidation('hi1_percentage', flag, 'hi1_grade');
+    flag = getvalidationFlag("hi1marksoutof", flag);
+    flag = percentageOutOfValidation("hi1marksoutof", "hi1_percentage", flag);
+    flag = getSelectControlvalidationFlag("hi2_degree", flag);
+    flag = getSelectControlvalidationFlag("hi2_branch", flag);
+    flag = getSelectControlvalidationFlag("hi2_college", flag);
+    flag = getSelectControlvalidationFlag("hi2university", flag);
+    flag = getvalidationFlag("hi2state", flag);
+    flag = getvalidationFlag("hi2city", flag);
+    flag = getvalidationFlag("hi2_yop", flag);
+    flag = getradiovalidationFlag("hi2_grade", flag);
+    flag = getvalidationFlag("hi2_percentage", flag);
+    flag = percentageValidation('hi2_percentage', flag, 'hi2_grade');
+    flag = getvalidationFlag("hi2marksoutof", flag);
+    flag = percentageOutOfValidation("hi2marksoutof", "hi2_percentage", flag);
+    flag = getSelectControlvalidationFlag("hi_degree", flag);
+    flag = getSelectControlvalidationFlag("hi_branch", flag);
+    flag = getSelectControlvalidationFlag("hi_college", flag);
+    flag = getSelectControlvalidationFlag("hiuniversity", flag);
+    flag = getvalidationFlag("histate", flag);
+    flag = getvalidationFlag("hicity", flag);
+    flag = getvalidationFlag("hi_yop", flag);
+    flag = getradiovalidationFlag("hi_grade", flag);
+    flag = getvalidationFlag("hi_percentage", flag);
+    flag = percentageValidation('hi_percentage', flag, 'hi_grade');
+    flag = getvalidationFlag("himarksoutof", flag);
+    flag = percentageOutOfValidation("himarksoutof", "hi_percentage", flag);
+    flag = getvalidationFlag("degreetext", flag);
+    flag = getvalidationFlag("branchtext", flag);
+    flag = getvalidationFlag("collegetext", flag);
+    flag = getvalidationFlag("urn", flag);
+    flag = getvalidationFlag("urn2", flag);
+    flag = getvalidationFlag("edu_text1", flag);
+    flag = getvalidationFlag("edu_text2", flag);
+    flag = getvalidationFlag("edu_text3", flag);
+    flag = getvalidationFlag("caddressline1", flag);
+    flag = getvalidationFlag("caddressline2", flag);
+    flag = getSelectControlvalidationFlag("caddressstate", flag);
+    flag = getSelectControlvalidationFlag("caddresscity", flag);
+    flag = getvalidationFlag("caddresspincode", flag);
+    flag = getvalidationFlag("paddressline1", flag);
+    flag = getvalidationFlag("paddressline2", flag);
+    flag = getSelectControlvalidationFlag("paddressstate", flag);
+    flag = getSelectControlvalidationFlag("paddresscity", flag);
+    flag = getvalidationFlag("paddresspincode", flag);
+    flag = getvalidationFlag("country", flag);
+    flag = getvalidationFlag("cempname", flag);
+    flag = getvalidationFlag("cexp", flag);
+    flag = getvalidationFlag("expinyear", flag);
+    flag = getvalidationFlag("texp", flag);
+    flag = getvalidationFlag("expinbpo", flag);
+    flag = getvalidationFlag("employer1", flag);
+    flag = getvalidationFlag("employer2", flag);
+    flag = getvalidationFlag("employer3", flag);
+    flag = getvalidationFlag("employer4", flag);
+    flag = getSelectControlvalidationFlag("company1", flag);
+    flag = getSelectControlvalidationFlag("company2", flag);
+    flag = getSelectControlvalidationFlag("company3", flag);
+    flag = getSelectControlvalidationFlag("company4", flag);
+    flag = getvalidationFlag("industry1", flag);
+    flag = getvalidationFlag("industry2", flag);
+    flag = getvalidationFlag("industry3", flag);
+    flag = getvalidationFlag("industry4", flag);
+    flag = getvalidationFlag("role1", flag);
+    flag = getvalidationFlag("role2", flag);
+    flag = getvalidationFlag("role3", flag);
+    flag = getvalidationFlag("role4", flag);
+    flag = getvalidationFlag("salary1", flag);
+    flag = getvalidationFlag("salary2", flag);
+    flag = getvalidationFlag("salary3", flag);
+    flag = getvalidationFlag("salary4", flag);
+    flag = getvalidationFlag("experience1", flag);
+    flag = getvalidationFlag("experience2", flag);
+    flag = getvalidationFlag("experience3", flag);
+    flag = getvalidationFlag("experience4", flag);
+    flag = getvalidationFlag("designation1", flag);
+    flag = getvalidationFlag("designation2", flag);
+    flag = getvalidationFlag("designation3", flag);
+    flag = getvalidationFlag("designation4", flag);
+    flag = getvalidationFlag("wp_text1", flag);
+    flag = getvalidationFlag("wp_text2", flag);
+    flag = getvalidationFlag("wp_text3", flag);
+    flag = getvalidationFlag("wp_text4", flag);
+    flag = getvalidationFlag("expfrommonth1", flag);
+    flag = getvalidationFlag("expfrommonth2", flag);
+    flag = getvalidationFlag("expfrommonth3", flag);
+    flag = getvalidationFlag("expfrommonth4", flag);
+    flag = getvalidationFlag("expfromyear1", flag);
+    flag = getvalidationFlag("expfromyear2", flag);
+    flag = getvalidationFlag("expfromyear3", flag);
+    flag = getvalidationFlag("expfromyear4", flag);
+    flag = getvalidationFlag("exptomonth1", flag);
+    flag = getvalidationFlag("exptomonth2", flag);
+    flag = getvalidationFlag("exptomonth3", flag);
+    flag = getvalidationFlag("exptomonth4", flag);
+    flag = getvalidationFlag("exptoyear1", flag);
+    flag = getvalidationFlag("exptoyear2", flag);
+    flag = getvalidationFlag("exptoyear3", flag);
+    flag = getvalidationFlag("exptoyear4", flag);
+    flag = getvalidationFlag("text1", flag);
+    flag = getvalidationFlag("text2", flag);
+    flag = getvalidationFlag("text3", flag);
+    flag = getvalidationFlag("text4", flag);
+    flag = getvalidationFlag("text5", flag);
+    flag = getvalidationFlag("text6", flag);
+    flag = getvalidationFlag("text7", flag);
+    flag = getvalidationFlag("text8", flag);
+    flag = getvalidationFlag("text9", flag);
+    flag = getvalidationFlag("text10", flag);
+    flag = getvalidationFlag("text11", flag);
+    flag = getvalidationFlag("text12", flag);
+    flag = getvalidationFlag("text13", flag);
+    flag = getvalidationFlag("text14", flag);
+    flag = getvalidationFlag("text15", flag);
+    flag = getdatetimevalidation("date1", flag);
+    flag = getdatetimevalidation("date2", flag);
+    flag = getdatetimevalidation("date3", flag);
+    flag = getdatetimevalidation("date4", flag);
+    flag = getdatetimevalidation("date5", flag);
+    flag = getvalidationFlag("ddown1", flag);
+    flag = getvalidationFlag("ddown2", flag);
+    flag = getvalidationFlag("ddown3", flag);
+    flag = getvalidationFlag("ddown4", flag);
+    flag = getvalidationFlag("ddown5", flag);
+    flag = getvalidationFlag("ddown6", flag);
+    flag = getvalidationFlag("ddown7", flag);
+    flag = getvalidationFlag("ddown8", flag);
+    flag = getvalidationFlag("ddown9", flag);
+    flag = getvalidationFlag("ddown10", flag);
+    flag = getvalidationFlag("ddown11", flag);
+    flag = getvalidationFlag("ddown12", flag);
+    flag = getvalidationFlag("ddown13", flag);
+    flag = getvalidationFlag("ddown14", flag);
+    flag = getvalidationFlag("ddown15", flag);
+    flag = getradiovalidationFlag("truefalse1", flag);
+    flag = getradiovalidationFlag("truefalse2", flag);
+    flag = getradiovalidationFlag("truefalse3", flag);
+    flag = getradiovalidationFlag("truefalse4", flag);
+    flag = getradiovalidationFlag("truefalse5", flag);
+    flag = getvalidationFlag("event", flag);
+    flag = getvalidationFlag("textarea1", flag);
+    flag = getvalidationFlag("textarea2", flag);
+    flag = getvalidationFlag("textarea3", flag);
+    flag = getvalidationFlag("textarea4", flag);
+    if ($('#campusform').length > 0) {
+        campusflag = 1;
+        campusflag = getvalidationFlag("ddeventlocation", campusflag);
+        campusflag = getvalidationFlag("ddevent", campusflag);
+        campusflag = getvalidationFlag("ddrequisition", campusflag);
+        campusflag = getvalidationFlag("ddjobrolelocation", campusflag);
+        if (campusflag == 0) {
+            errormessage += "<li>Please choose campus details!</li>";
+        }
+        flag = (flag == 0) ? flag : campusflag;
+    }
+
+    flag = sourceValidation(flag)
+
+    flag = validateAttachment("resumelocation", flag, 'resumeToUpload');
+    flag = validateAttachment("photopath", flag, 'photoToUpload');
+    flag = validateAttachment("customfile1", flag, 'customfile1ToUpload');
+    flag = validateAttachment("customfile2", flag, 'customfile2ToUpload');
+    flag = validateAttachment("customfile3", flag, 'customfile3ToUpload');
+    flag = validateAttachment("customfile4", flag, 'customfile4ToUpload');
+    flag = validateAttachment("customfile5", flag, 'customfile5ToUpload');
+    if (flag == 0) {
+        popupwarnings("<li>Note: All * marked fields are mandatory</li>" + errormessage);
+        return false;
+    }
+    if (flag == 0) {
+        return false;
+    }
+    if ($('#emaildiv').val() != "") {
+        if ($('#emaildiv').html() == "Already Exist") {
+            popupwarnings("<li>The email you have entered has already been registered</li>");
+            return false;
+        }
+    }
+    if ($('[name=uggrade]').length > 0 && $('#ugpercentage').length > 0 && $("input[name=uggrade]:checked").val() != '' && $('#ugpercentage').val() != '') {
+        var gradetype = $("input[name=uggrade]:checked").val();
+        if (gradetype == '1' && Number($("#ugpercentage").val()) <= 10) {
+            popupwarnings("<li>Please specify valid degree percentage </li>");
+            $("#ugpercentage_div").addClass("has-error").removeClass("has-success");
+            return false;
+        } else if (gradetype == '2' && Number($("#ugpercentage").val()) > 10) {
+            popupwarnings("<li>Please specify valid degree CGPA (should be 1-10) </li>");
+            $("#ugpercentage_div").addClass("has-error").removeClass("has-success");
+            return false;
+        }
+    }
+    if ($('[name=pggrade]').length > 0 && $('#pgpercentage').length > 0 && $("input[name=pggrade]:checked").val() != '' && $('#pgpercentage').val() != '') {
+        var gradetype = $("input[name=pggrade]:checked").val();
+        if (gradetype == '1' && Number($("#pgpercentage").val()) <= 10) {
+            popupwarnings("<li>Please specify valid degree percentage </li>");
+            $("#pgpercentage_div").addClass("has-error").removeClass("has-success");
+            return false;
+        } else if (gradetype == '2' && Number($("#pgpercentage").val()) > 10) {
+            popupwarnings("<li>Please specify valid degree CGPA (should be 1-10) </li>");
+            $("#pgpercentage_div").addClass("has-error").removeClass("has-success");
+            return false;
+        }
+    }
+    if ($('[name=hi1_grade]').length > 0 && $('#hi1_percentage').length > 0 && $("input[name=hi1_grade]:checked").val() != '' && $('#hi1_percentage').val() != '') {
+        var gradetype = $("input[name=hi1_grade]:checked").val();
+        if (gradetype == '1' && Number($("#hi1_percentage").val()) <= 10) {
+            popupwarnings("<li>Please specify valid degree percentage</li>");
+            $("#hi1_percentage_div").addClass("has-error").removeClass("has-success");
+            return false;
+        } else if (gradetype == '2' && Number($("#hi1_percentage").val()) > 10) {
+            popupwarnings("<li>Please specify valid degree CGPA (should be 1-10) </li>");
+            $("#hi1_percentage_div").addClass("has-error").removeClass("has-success");
+            return false;
+        }
+    }
+    if ($('[name=hi2_grade]').length > 0 && $('#hi2_percentage').length > 0 && $("input[name=hi2_grade]:checked").val() != '' && $('#hi2_percentage').val() != '') {
+        var gradetype = $("input[name=hi2_grade]:checked").val();
+        if (gradetype == '1' && Number($("#hi2_percentage").val()) <= 10) {
+            popupwarnings("<li>Please specify valid degree percentage </li>");
+            $("#hi2_percentage_div").addClass("has-error").removeClass("has-success");
+            return false;
+        } else if (gradetype == '2' && Number($("#hi2_percentage").val()) > 10) {
+            popupwarnings("<li>Please specify valid degree CGPA (should be 1-10) </li>");
+            $("#hi2_percentage_div").addClass("has-error").removeClass("has-success");
+            return false;
+        }
+    }
+    if ($('[name=hi_grade]').length > 0 && $('#hi_percentage').length > 0 && $("input[name=hi_grade]:checked").val() != '' && $('#hi_percentage').val() != '') {
+        var gradetype = $("input[name=hi_grade]:checked").val();
+        if (gradetype == '1' && Number($("#hi_percentage").val()) <= 10) {
+            popupwarnings("<li>Please specify valid degree percentage</li>");
+            $("#hi_percentage_div").addClass("has-error").removeClass("has-success");
+            return false;
+        } else if (gradetype == '2' && Number($("#hi_percentage").val()) > 10) {
+            popupwarnings("<li>Please specify valid degree CGPA (should be 1-10) </li>");
+            $("#hi_percentage_div").addClass("has-error").removeClass("has-success");
+            return false;
+        }
+    }
+    if (parseInt($("#cexp").val()) > 500) {
+        popupwarnings("<li>Current experience should not greater than 500!</li>");
+        return false;
+    }
+    if (parseInt($("#expinyear").val()) > 100) {
+        popupwarnings("<li>Total experience should not greater than 100!</li>");
+        return false;
+    }
+    if (parseInt($("#texp").val()) > 500) {
+        popupwarnings("<li>Total experience should not greater than 500!</li>");
+        return false;
+    }
+    if ($("#termsandcondition").length > 0) {
+        var selectedoption = $("input[name=terms]:checked").val();
+        if (selectedoption == undefined || selectedoption == "0") {
+            popupwarnings("<li>Please agree to terms and condition!</li>");
+            return false;
+        }
+    }
+    if ($("#declaration").length > 0 && $("#declaration").prop('checked') != true) {
+        popupwarnings("<li>Declaration is missing!</li>");
+        return false;
+    }
+    startprocesspopupwindow();
+    var myform = $('#myform');
+    var disabledinput = $("#registrationform").find(':input:disabled').removeAttr('disabled');
+    var disabledselect = $("#registrationform").find('select:disabled').removeAttr('disabled');
+    var disabledadio = $("#registrationform").find(':radio:disabled').removeAttr('disabled');
+    var disabledtextarea = $("#registrationform").find('textarea:disabled').removeAttr('disabled');
+    alldata = $("#registrationform").serialize();
+    var POSTDATA = "action=updatecandidate&alldata=" + encodeURIComponent(alldata);
+    if ($("#campusform").length > 0) {
+        POSTDATA += "&campusinfo=" + encodeURIComponent($("#campusform").serialize());
+    }
+    POSTDATA += "&registrationid=" + encodeURIComponent($("#registrationformid").val());
+    callservicebyajax(POSTDATA, "mserver/savecandidateserver.php", function () {
+        if (ajaxResponse == 0) {
+            $('#ModalWindowBody').html('Error : Please try again!<div class="row"> <a href="javascript:void(0)"  onclick="stopprocesspopupwindow();" >OK</a> </div>');
+        } else {
+            stopprocesspopupwindow();
+            $('#responsediv').html('').css({"color": "#000", "text-align": "left"});
+            if (registrationcallbackfunction != null && registrationcallbackfunction) {
+                var result = jQuery.parseJSON(ajaxResponse);
+                if (result.error != '') {
+                    $('#responsediv').css("display", "");
+                    $('#responsediv').html(result.error).css({"color": "#f00", "text-align": "center"});
+                } else {
+                    registrationcallbackfunction(result.candidateid);
+                }
+            } else {
+                var result = jQuery.parseJSON(ajaxResponse);
+                $('#responsediv').css("display", "");
+                if (result.error != '') {
+                    $('#responsediv').html(result.error).css({"color": "#f00", "text-align": "center"});
+                } else {
+                    $('#formdiv').css("display", "none");
+                    $('#mandatorymarkdiv').css("display", "none");
+                    if ($('#campusform').length > 0) // campus case
+                        $('#campusform').css("display", "none");
+                    $('#responsediv').html(result.success).css({"color": "#000", "text-align": "left"});
+                    if (customCallbackFunction != null && customCallbackFunction) {
+                        //execute it
+                        customCallbackFunction();
+                    }
+                }
+            }
+        }
+        disabledinput.attr('disabled', 'disabled');
+        disabledselect.attr('disabled', 'disabled');
+        disabledadio.attr('disabled', 'disabled');
+        disabledtextarea.attr('disabled', 'disabled');
+    });
+}
+
+function sourceValidation(rvalue) {
+    var returnval = rvalue;
+    /*Source Validation*/
+    if ($('#sourcetype').length > 0) {
+        returnval = getvalidationFlag("sourcetype", returnval);
+        if ($('#sourcetype').val() != 0 && $('#sourcetype').val() != 3) {
+            returnval = getvalidationFlag("sources", returnval);
+        } else {
+            returnval = getvalidationFlag("sourcename", returnval);
+            returnval = getvalidationFlag("sourceemail", returnval);            
+        }
+    } else {
+        returnval = getvalidationFlag("sourcename", returnval);
+        returnval = getvalidationFlag("sourceemail", returnval);        
+    }
+    return returnval;
+}
+
+function checkDuplicate(btncontrol) {
+    $('#dupresponsediv').html("");
+    errormessage = "";
+    var flag = 1;
+    if ($("#dup_email").length > 0) {
+        if ($('#dup_email').attr('required')) {
+            if (!isValidEmailAddress(trim($("#dup_email").val()))) {
+                $('#dup_email').focus();
+                errormessage += "<li>Please specify " + $('label[for="dup_email"]').attr("title") + "</li>";
+                popupwarnings(errormessage);
+                return false;
+            }
+            $("#dup_email_div").removeClass("has-error").addClass("has-success");
+        }
+    }
+    flag = getvalidationFlag("dup_name", flag);
+    flag = getvalidationFlag("dup_urn", flag);
+    flag = validatenumbercontrol("dup_mobile", flag, 10)
+    flag = validatenumbercontrol("dup_aadhaarno", flag, 12)
+    flag = getdatetimevalidation("dup_dob", flag);
+    flag = getvalidationFlag("dup_passportnumber", flag);
+    flag = getvalidationFlag("dup_pannumber", flag);
+    flag = getvalidationFlag("dup_referralname", flag);
+    if ($("#dup_referralemail").length > 0) {
+        if ($('#dup_referralemail').attr('required')) {
+            if (!isValidEmailAddress(trim($("#dup_referralemail").val())))
+            {
+                errormessage += "<li>Please specify valid referral details</li>"
+                $("#dup_referralemail_div").addClass("has-error").removeClass("has-success");
+                flag = 0;
+            } else
+                $("#dup_referralemail_div").removeClass("has-error").addClass("has-success");
+        }
+    }
+    if (flag == 0) {
+        popupwarnings("<li>Note: All * marked fields are mandatory</li>" + errormessage);
+        return false;
+    }
+    btncontrol.style.display = "none";
+    startprocesspopupwindow();
+    var alldata = $("#duplicateform").serialize();
+    var campusdata = $("#campusform").serialize();
+    var POSTDATA = "action=checkamsduplicate&alldata=" + encodeURIComponent(alldata) + "&campusdata=" + encodeURIComponent(campusdata);
+    POSTDATA += "&registrationid=" + encodeURIComponent($("#registrationformid").val());
+    if ($('#jobid').length > 0 && $('#jobid').val() != "")
+        POSTDATA += "&jobid=" + encodeURIComponent($('#jobid').val());
+    callservicebyajax(POSTDATA, "mserver/savecandidateserver.php", function () {
+        var result = jQuery.parseJSON(ajaxResponse);
+        if (result.CandidateId !== '' && result.CandidateId == 0) {
+            $('#duplicatecheckdiv').css("display", "none");
+            if ($('#campusdiv').length > 0)
+                $('#campusdiv').css("display", "");
+            $('#unhideregistrationformonduplicatecheck').css("display", "");
+            if ($('#dup_email').length > 0 && $('#email').length > 0) {
+                $('#email').val($('#dup_email').val());
+                $('#email').attr('disabled', true);
+            }
+            if ($('#dup_name').length > 0 && ($('#fname').length > 0 || $('#fullname').length > 0)) {
+                if ($('#fullname').length > 0) {
+                    $('#fullname').val($('#dup_name').val());
+                    $('#fullname').attr('disabled', true);
+                } else if ($('#fname').length > 0) {
+                    $('#fname').val($('#dup_name').val());
+                    $('#fname').attr('disabled', true);
+                }
+            }
+            if ($('#dup_urn').length > 0 && ($('#urn2').length > 0 || $('#urn').length > 0)) {
+                if ($('#urn').length > 0) {
+                    $('#urn').val($('#dup_urn').val());
+                    $('#urn').attr('disabled', true);
+                } else if ($('#urn2').length > 0) {
+                    $('#urn2').val($('#dup_urn').val());
+                    $('#urn2').attr('disabled', true);
+                }
+            }
+            if ($('#dup_mobile').length > 0 && $('#mobile').length > 0) {
+                $('#mobile').val($('#dup_mobile').val());
+                $('#mobile').attr('disabled', true);
+            }
+            if ($('#dup_aadhaarno').length > 0 && $('#aadhaarno').length > 0) {
+                $('#aadhaarno').val($('#dup_aadhaarno').val());
+                $('#aadhaarno').attr('disabled', true);
+            }
+            if ($('#dup_dob').length > 0 && $('#dob').length > 0) {
+                $('#dob').val($('#dup_dob').val());
+                $('#dob').attr('disabled', true);
+            }
+            if ($('#dup_passportnumber').length > 0 && $('#passportnumber').length > 0) {
+                $('#passportnumber').val($('#dup_passportnumber').val());
+                $('#passportnumber').attr('disabled', true);
+            }
+            if ($('#dup_pannumber').length > 0 && $('#pannumber').length > 0) {
+                $('#pannumber').val($('#dup_pannumber').val());
+                $('#pannumber').attr('disabled', true);
+            }
+            if ($('#dup_referralname').length > 0 && $('#referralname').length > 0) {
+                $('#referralname').val($('#dup_referralname').val());
+                $('#referralname').attr('disabled', true);
+            }
+            if ($('#dup_referralemail').length > 0 && $('#referralemail').length > 0) {
+                $('#referralemail').val($('#dup_referralemail').val());
+                $('#referralemail').attr('disabled', true);
+            }
+        } else {
+            //$("#duplicateform")[0].reset();
+            if (result.CampusError !== '') {
+                btncontrol.style.display = "";
+                $('#dupresponsediv').html(result.CampusError).css("color", "#f00");
+            } else if (result.Error !== '') {
+                btncontrol.style.display = "";
+                $('#dupresponsediv').html(result.Error).css("color", "#f00");
+            } else if (result.Success !== '') {
+                $('#formdiv').css("display", "none");
+                $('#mandatorymarkdiv').css("display", "none");
+                $('#duplicatecheckdiv').css("display", "none");
+                if ($('#campusform').length > 0) // campus case
+                    $('#campusform').css("display", "none");
+                $('#dupresponsediv').html(result.Success).css({"color": "#000", "text-align": "left"});
+            }
+        }
+        stopprocesspopupwindow();
+    });
+}
+
+function applytoselectedcrpojobs(checkboxname) {
+    POSTDATA = "action=applyregisteredcandidatewitheventjob&candidateid=" + encodeURIComponent($("#candidateid").val());
+    selectedjobids = getallselectedcheckboxvalues(checkboxname);
+    if (!selectedjobids || selectedjobids == '') {
+        popupwarnings("<li>Please select atleast one position</li>");
+        return false;
+    }
+    $('#divErrorMessageContainer').css({"pointer-events": "none", "cursor": "default"}).addClass("label-success").html("<img src='msource/images/sync.gif'> Please wait...");
+    POSTDATA += "&jobids=" + encodeURIComponent(selectedjobids);
+    POSTDATA += "&registrationid=" + encodeURIComponent($("#registrationformid").val());
+    startprocesspopupwindow();
+    callservicebyajax(POSTDATA, "mserver/savecandidateserver.php", function () {
+        if (ajaxResponse == 0) {
+            $('#divErrorMessageContainer').toggleClass("label-success label-danger").html("Error : Please try again!");
+        } else {
+            $('#mandatorymarkdiv').css("display", "none");
+            $('#responsediv').css("display", "");
+            var result = jQuery.parseJSON(ajaxResponse);
+            if (result.error != '') {
+                $('#responsediv').css("display", "");
+                $('#responsediv').html(result.error).css({"color": "#f00", "text-align": "center"});
+            } else {
+                $('#formdiv').css("display", "none");
+                $('#responsediv').html(result.success).css({"text-align": "left"});
+            }
+        }
+        stopprocesspopupwindow();
+    });
+}
+
+function getAllMyCampusJobs(candidateId) {
+    POSTDATA = "candidateid=" + encodeURIComponent(candidateId);
+    POSTDATA += "&registrationid=" + encodeURIComponent($("#registrationformid").val());
+    callservicebyajax(POSTDATA, "registration/campus/campusjobs.php", function () {
+        if (ajaxResponse != 0) {
+            if ($('#mandatorymarkdiv').length > 0)
+                $('#mandatorymarkdiv').css("display", "none");
+            if ($('#campusform').length > 0)
+                $('#campusform').html("").css("display", "none");
+            $('#formdiv').html(ajaxResponse);
+        }
+    });
+}
+
+function getvalidationFlag(elementid, rvalue) {
+    var returnval = rvalue;
+    var ele = $('#' + elementid);
+    if (ele.length > 0 && ele.attr('required')) {
+        parentid = ele.attr('parentid')
+        if (parentid && $("#" + parentid).attr("disabled") == "disabled")
+            return returnval;
+        var valu = ele.val();
+        if (valu == null || (valu != null && trim(valu) == '')) {
+            $("#" + elementid + "_div").addClass("has-error").removeClass("has-success");
+            returnval = 0;
+        } else {
+            $("#" + elementid + "_div").removeClass("has-error").addClass("has-success");
+        }
+    } else {
+        $("#" + elementid + "_div").removeClass("has-error").removeClass("has-success");
+    }
+    return returnval;
+}
+
+function nameValidation(elementid, rvalue) {
+    var returnval = rvalue;
+    var ele = $('#' + elementid);
+    if (ele.length > 0 && ele.attr('required')) {
+        var valu = ele.val();
+        if (valu != null && trim(valu).length < 2) {
+            errormessage += "<li>Invalid " + $('label[for="' + elementid + '"]').attr("title") + ", Not reached minimum requirement (2 characters) </li>";
+            $("#" + elementid + "_div").addClass("has-error").removeClass("has-success");
+            returnval = 0;
+        } else {
+            $("#" + elementid + "_div").removeClass("has-error").addClass("has-success");
+        }
+    }
+    return returnval;
+}
+
+function percentageValidation(elementid, rvalue, gradeid) {
+    var returnval = rvalue;
+    var ele = $('#' + elementid);
+    var grad = $('[name=' + gradeid + ']');
+    parentid = ele.attr('parentid')
+    if (parentid && $("#" + parentid).attr("disabled") == "disabled")
+        return returnval;
+    if (ele.length > 0 && ele.attr('required')) {
+        if (trim(ele.val()) == '' || Number(ele.val()) < 1 || Number(ele.val()) > 100) {
+            $("#" + elementid + "_div").addClass("has-error").removeClass("has-success");
+            errormessage += "<li>Please specify valid " + $('label[for="' + elementid + '"]').attr("title") + " </li>";
+            returnval = 0;
+            return returnval;
+        }
+    }
+    if (ele.length > 0 && grad.length > 0) {
+        var selected = $("input[type='radio'][name='" + gradeid + "']:checked");
+        if ((Number(selected.val()) == 1 && Number(ele.val()) > 100) || (Number(selected.val()) == 2 && Number(ele.val()) > 10)) {
+            $("#" + elementid + "_div").addClass("has-error").removeClass("has-success");
+            errormessage += "<li>Please specify valid " + $('label[for="' + elementid + '"]').attr("title") + " </li>";
+            returnval = 0;
+        }
+    }
+    return returnval;
+}
+
+function percentageOutOfValidation(elementid, compareId, rvalue) {
+    var returnval = rvalue;
+    var ele = $('#' + elementid);
+    var compar = $('#' + compareId);
+    if (ele.length > 0 && compar.length > 0) {
+        if (compar.val() != '' && Number(compar.val()) >= 0 && ele.val() != '' && Number(ele.val()) >= 0 && Number(ele.val()) < Number(compar.val())) {
+            $("#" + elementid + "_div").addClass("has-error").removeClass("has-success");
+            errormessage += "<li>Please specify valid " + $('label[for="' + elementid + '"]').attr("title") + " </li>";
+            returnval = 0;
+        }
+    }
+    return returnval;
+}
+
+function getradiovalidationFlag(elementid, rvalue) {
+    var returnval = rvalue;
+    var ele = $('[name=' + elementid + ']');
+    if (ele.length > 0 && ele.attr('required')) {
+        parentid = ele.attr('parentid')
+        if (parentid && $("#" + parentid).attr("disabled") == "disabled")
+            return returnval;
+        if ($('[name=' + elementid + ']').attr('required')) {
+            var selected = $("input[type='radio'][name='" + elementid + "']:checked");
+            if (!selected.length > 0 || (selected.val() == '' || !selected.val())) {
+                $("#" + elementid + "_div").addClass("has-error").removeClass("has-success");
+                returnval = 0;
+            } else {
+                $("#" + elementid + "_div").removeClass("has-error").addClass("has-success");
+            }
+        }
+    }
+    return returnval;
+}
+
+function validateAttachment(elementid, rvalues, attachmentid) {
+    var returnval = rvalues;
+    if ($('#' + elementid).length > 0) {
+        if ($('#' + elementid).attr('required')) {
+            var valu = $("#" + elementid).val();
+            if (valu != null && (trim(valu) == '')) {
+                $("#" + elementid + "_div").addClass("has-error").removeClass("has-success");
+                errormessage += "<li>" + $('label[for="' + elementid + '"]').attr("title") + " is missing, </li>";
+                $('#' + attachmentid).focus();
+                returnval = 0;
+            } else {
+                $("#" + elementid + "_div").removeClass("has-error").addClass("has-success");
+            }
+        }
+    }
+    return returnval;
+}
+
+function validatenumbercontrol(elementid, rvalues, maxlimit) {
+    var returnval = rvalues;
+    var mobile = null;
+    if ($("#" + elementid).length > 0) {
+        var mobile = $("#" + elementid).val();
+        if ($('#' + elementid).attr('required')) {
+            if (!mobile || trim(mobile) == '') {
+                $("#" + elementid + "_div").addClass("has-error").removeClass("has-success");
+                errormessage += "<li>Please specify valid " + $('label[for="' + elementid + '"]').attr("title") + "</li>";
+                returnval = 0;
+                return returnval;
+            }
+        }
+        if (mobile !== null && mobile != '') {
+            if ((mobile.length) > maxlimit || (mobile.length) < maxlimit) {
+                $("#" + elementid + "_div").addClass("has-error").removeClass("has-success");
+                returnval = 0;
+                errormessage += "<li>Please enter " + maxlimit + " digit " + $('label[for="' + elementid + '"]').attr("title") + "</li>";
+                return returnval;
+            }
+            $("#" + elementid + "_div").removeClass("has-error").addClass("has-success");
+        }
+
+    }
+    return returnval;
+}
+
+function getSelectControlvalidationFlag(elementid, rvalue) {
+    var returnval = rvalue;
+    var ele = $('#' + elementid);
+    if (ele.length > 0 && ele.attr('required')) {
+        parentid = ele.attr('parentid')
+        if (parentid && $("#" + parentid).attr("disabled") == "disabled")
+            return returnval;
+
+        var valu = ele.val();
+        if (trim(valu) == '') {
+            $("#" + elementid + "_div").addClass("has-error").removeClass("has-success");
+            returnval = 0;
+        } else {
+            $("#" + elementid + "_div").removeClass("has-error").addClass("has-success");
+        }
+
+        valu = $("#" + elementid + " option:selected").text();
+        if (valu == 'Others')
+        {
+            returnval = getOthercontrolvalidationFlag("other_" + elementid, returnval);
+        }
+    } else {
+        $("#" + elementid + "_div").removeClass("has-error").removeClass("has-success");
+    }
+    return returnval;
+}
+
+function getOthercontrolvalidationFlag(elementid, rvalue) {
+    var returnval = rvalue;
+    parentid = $("#" + elementid).attr('parentid')
+    if (parentid && $("#" + parentid).attr("disabled") == "disabled")
+        return returnval;
+    valu = $("#" + elementid).val();
+    if (trim(valu) == '') {
+        $("#" + elementid + "_div").addClass("has-error").removeClass("has-success");
+        returnval = 0;
+    } else {
+        $("#" + elementid + "_div").removeClass("has-error").addClass("has-success");
+    }
+    return returnval;
+}
+
+function getdatetimevalidation(elementid, rvalue) {
+    var returnval = rvalue;
+    if ($("#" + elementid).length > 0) {
+        if ($("#" + elementid).attr('required')) {
+            var valu = $("#" + elementid).val();
+            if (trim(valu) == '') {
+                $("#" + elementid + "_div").addClass("has-error").removeClass("has-success");
+                returnval = 0;
+            } else {
+                $("#" + elementid + "_div").removeClass("has-error").addClass("has-success");
+            }
+        }
+    }
+    return returnval;
+}
+
+function chkemailexists(value, id) {
+    if (value != '') {
+        if (!isValidEmailAddress(trim(value))) {
+            $('#' + id).addClass("has-error").removeClass("has-success");
+            $("#" + id + "_div").addClass("has-error").removeClass("has-success");
+            popupwarnings("<li>Invalid Email Id</li>");
+        } else {
+            $("#" + id + "_div").removeClass("has-error").addClass("has-success");
+        }
+    } else {
+        var ele = $('#' + id);
+        if (ele.attr('required')) {
+            $("#" + id + "_div").addClass("has-error").removeClass("has-success");
+        } else {
+            $("#" + id + "_div").removeClass("has-error").removeClass("has-success");
+        }
+    }
+}
+
+function chkIsValidemail(value, id, responsediv) {
+    if (value != '') {
+        if (isValidEmailAddress(trim(value))) {
+            $("#" + id + "_div").removeClass("has-error").addClass("has-success");
+        } else {
+            $("#" + responsediv).html("Invalid Email Id");
+            $("#" + id + "_div").addClass("has-error").removeClass("has-success");
+        }
+    } else {
+        $("#" + id + "_div").addClass("has-error").removeClass("has-success");
+    }
+}
+
+function isValidEmailAddress(emailAddress) {
+    var pattern = new RegExp(/^(("[\w-\s]+")|([\w-]+(?:\.[\w-]+)*)|("[\w-\s]+")([\w-]+(?:\.[\w-]+)*))(@((?:[\w-]+\.)*\w[\w-]{0,66})\.([a-z]{2,7}(?:\.[a-z]{2})?)$)|(@\[?((25[0-5]\.|2[0-4][0-9]\.|1[0-9]{2}\.|[0-9]{1,2}\.))((25[0-5]|2[0-4][0-9]|1[0-9]{2}|[0-9]{1,2})\.){2}(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[0-9]{1,2})\]?$)/i);
+    if (!pattern.test(emailAddress)) {
+        return false;
+    } else {
+        return true;
+    }
+}
+
+function namecharactervalidation(e) {
+    var unicode = e.charCode ? e.charCode : e.keyCode;
+    if ((unicode >= 65 && unicode <= 90) || (unicode > 96 && unicode <= 122) || (unicode == 8 || unicode == 32 || unicode == 9)) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+function charactervalidation(e) {
+    var unicode = e.charCode ? e.charCode : e.keyCode;
+    if ((unicode >= 65 && unicode <= 90) || (unicode > 96 && unicode <= 122) || (unicode == 8 || unicode == 32 || unicode == 9 || unicode == 44 || unicode == 46)) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+function phonenumbervalidation(e) {
+    var unicode = e.charCode ? e.charCode : e.keyCode;
+    if (unicode != 8 && unicode != 9) {
+        if (unicode < 48 || unicode > 57)
+            return false;
+    }
+    return true;
+}
+
+function floatnumbervalidation(e, elementId) {
+    var unicode = e.charCode ? e.charCode : e.keyCode;
+    if (unicode != 8) {
+        if (unicode < 46 || unicode == 47 || unicode > 57)
+            return false;
+        var digits = $("#" + elementId).val();
+        var digitLength = digits.length;
+        if (digitLength <= 4 && digitLength >= 1 && digits.indexOf('.') == -1 && unicode == 46) {
+            return true;
+        } else if (unicode == 46)
+            return false;
+    }
+    return true;
+}
+
+function otherselect(div, id) {
+    var text1 = $("#" + id + " option:selected").text();
+    if (text1 == 'Others') {
+        $("#" + div).css("display", "");
+        $("#" + div + "_box").css("display", "");
+        $("#" + div + "_div").css("display", "");
+    } else {
+        $("#" + div).css("display", "none");
+        -$("#" + div + "_box").css("display", "none");
+        $("#" + div + "_div").css("display", "none");
+        $("#other_" + id + "").val("");
+    }
+}
+
+function openOtherselect(div) {
+    $("#" + div + "_box").css("display", "");
+    $("#" + div + "_div").css("display", "");
+}
+
+function lettersnumbersOnly(e) {
+    var regex = new RegExp("^[a-zA-Z0-9]+$");
+    var key = String.fromCharCode(!e.charCode ? e.which : e.charCode);
+    if (!regex.test(key)) {
+        event.preventDefault();
+        return false;
+    }
+}
+
+function showJobDescription(jobid) {
+    if (jobid != 0) {
+        var POSTDATA = "action=shojobdescription&jobid=" + encodeURIComponent(jobid);
+        callservicebyajax(POSTDATA, "mserver/jobserver.php", function () {
+            $('#ModalWindowHeader').html('<p><strong>Job Description</strong></p>');
+            $('#ModalWindowBody').html(ajaxResponse);
+            $('#ModalWindowFooter').html('<div class="content"><a class="btn btn-microbtn submitdiv micro-btn-modal-close" onclick="closemodalwindow()">Close</a></div>');
+            $('.modal-header').css("display", "");
+            $('.modal-footer').css("display", "");
+            openpopupwindow();
+        });
+    }
+}
+
+function applyforit(jobid) {
+    $('#postedjobs').css("display", "none");
+    $('#registerationdiv').css("display", "");
+    $('#backtojobpage').css("display", "");
+    $('#jobid').val(jobid);
+}
+
+function backtoJob() {
+    startLoadingPopupWindow();
+    getpagecontent('registration/home.php');
+}
+
+function applyjobpopup(jobid) {
+    selectedjobid = jobid;
+    $('duplicatecheckdiv').css("display", "");
+    applyforit(jobid);
+}
+
+function applyijpjob(jobid) {
+    selectedjobid = jobid;
+    applyforit(selectedjobid)
+}
+
+function validatemail(mailid) {
+    if (!isValidEmailAddress(trim(mailid))) {
+        $("#divErrorMessageContainer").html("Please specify valid email").addClass("label label-danger");
+        setTimeout(function () {
+            $("#divErrorMessageContainer").html("").removeClass("label label-danger");
+        }, 2000);
+        return false;
+    } else
+        $("#divErrorMessageContainer").html("");
+    return true;
+}
+
+function validateregistrationcredential() {
+    isValid = 1;
+    securityid = trim($("#securityid").val());
+    securitypassword = trim($("#securitypassword").val());
+    if (securityid.length < 3) {
+        $("#securityid").addClass("input-errorclass");
+        isValid = 0;
+    }
+    if (securitypassword.length < 3) {
+        $("#securitypassword").addClass("input-errorclass");
+        isValid = 0;
+    }
+    if (isValid == 1) {
+        $("#divErrorMessageContainer").removeClass("label-danger").addClass("label-warning").html("Please wait..");
+        $('#divErrorMessageContainer').css({"pointer-events": "none", "cursor": "default"}).addClass("label-success").html("<img src='msource/images/sync.gif'> Please wait...");
+        var POSTDATA = "action=chcksecuritycredentials&securityid=" + encodeURIComponent(securityid) + "&securitypassword=" + encodeURIComponent(securitypassword);
+        POSTDATA += "&registrationid=" + encodeURIComponent($('#registrationformid').val());
+        callservicebyajax(POSTDATA, "mserver/savecandidateserver.php", function () {
+            if (ajaxResponse == 1) {
+                issecuritycheckdone = 1;
+                getpagecontent('registration/home.php');
+            } else {
+                $("#divErrorMessageContainer").addClass("label-danger").html("Invalid credentials");
+            }
+        });
+    } else {
+        $("#divErrorMessageContainer").addClass("label-danger").html("Please enter valid credentials..");
+    }
+}
+
+function getintoselectedeventregistration(eventid) {
+    configuredevent = eventid;
+    getpagecontent('registration/home.php');
+    configuredevent = 0;
+    issecuritycheckdone = 0;
+}
+
+function getpagecontent(urllocator) {
+    var POSTDATA = "";
+    if ($('#registrationformid').length > 0)
+        POSTDATA = "registrationid=" + encodeURIComponent($('#registrationformid').val());
+    if (AmsReference)
+        POSTDATA += "&reference=" + encodeURIComponent(AmsReference);
+    if (crpoevent && crpoevent != 0)
+        POSTDATA += "&event=" + encodeURIComponent(crpoevent);
+    if (crpolocation && crpolocation != 0)
+        POSTDATA += "&location=" + encodeURIComponent(crpolocation);
+    if (crpocandidate && crpocandidate != 0)
+        POSTDATA += "&candidate=" + encodeURIComponent(crpocandidate);
+    if (crpojobrole && crpojobrole != 0)
+        POSTDATA += "&jobrole=" + encodeURIComponent(crpojobrole);
+    if (issecuritycheckdone != 0)
+        POSTDATA += "&issecuritycheckdone=" + encodeURIComponent(issecuritycheckdone);
+    if (configuredevent != 0)
+        POSTDATA += "&configuredevent=" + encodeURIComponent(configuredevent);
+    POSTDATA += "&videoproctoringvalidated=" + encodeURIComponent(videoproctoringvalidated);
+    if ($('#eventtype').length > 0)
+        eventtype = $('#eventtype').val();
+    if (eventtype != '')
+        POSTDATA += "&eventtype=" + encodeURIComponent(eventtype);
+    if ($('#email').length > 0)
+        POSTDATA += "&email=" + encodeURIComponent($('#email').val());
+    if ($('#usn').length > 0)
+        POSTDATA += "&code=" + encodeURIComponent($('#usn').val());
+    //startprocesspopupwindow();
+    callservicebyajax(POSTDATA, urllocator, function () {
+        $('#index_contentdiv').html(ajaxResponse);
+        refreshBootsrapSelectPicker();
+        stopprocesspopupwindow();
+    });
+}
+
+function changenavstatus(selectedtab) {
+    $('#navbar').each(function () {
+        $(this).find('li').each(function () {
+            $(this).find('a').removeClass("activetab").addClass("inactivetab");
+        });
+    });
+    $('#' + selectedtab).toggleClass("inactivetab activetab");
+}
+
+function removefilefromattachment(divid, inputid) {
+    $("#" + divid).html("");
+    $("#" + inputid).val("");
+}
+
+function ajaxFileUpload(type, valuesdata, fileelementid, hiddenfieldid, errordivid) {
+    if ($("#" + hiddenfieldid).val() && $("#" + hiddenfieldid).val() != "") {
+        if ($("#" + fileelementid).val() == '')
+            return;
+        var isfilereplace = confirm("file is already exists,Do you want to replace.?");
+        if (!isfilereplace)
+            return;
+    }
+    inputfilesize = $('#' + fileelementid)[0].files[0].size;
+    if (((type == "others" || type == "image") && inputfilesize > (1024 * 1024 * 3))
+            || (type == "resume" && inputfilesize > (1024 * 1024))) {
+        popupwarnings("<li>file size cannot be more than allowed limit</li>");
+        $("#" + fileelementid).val('');
+        return;
+    }
+    if (type == "image") {
+        var acceptedImageTypes = ['image/gif', 'image/jpeg', 'image/png'];
+        if ($('#' + fileelementid)[0].files[0] && $.inArray($('#' + fileelementid)[0].files[0]['type'], acceptedImageTypes) == -1) {
+            popupwarnings("<li>Please upload valid photo</li>");
+            $("#" + fileelementid).val('');
+            return;
+        }
+    }
+
+    if (valuesdata != '') {
+        if (type == 'resume' || type == 'image' || type == 'others') {
+            $("#" + errordivid).html("Uploading...");
+            file = 'minclude/fileuploadtoserver.php?filetype=' + encodeURIComponent(type) + '&alias=' + encodeURIComponent(ClientAlias) + '&fileelementid=' + encodeURIComponent(fileelementid);
+        }
+        $("#loading").ajaxStart(function () {
+            $(this).show();
+        })
+                .ajaxComplete(function () {
+                    $(this).hide();
+                });
+        $.ajaxFileUpload
+                (
+                        {
+                            url: file,
+                            secureuri: false,
+                            fileElementId: fileelementid,
+                            dataType: 'json',
+                            success: function (data, status) {
+                                if (data != 0) {
+                                    var result = jQuery.parseJSON(data);
+                                    $('#' + errordivid).html("Attached Successfully").css("color", "green");
+                                    setTimeout(function () {
+                                        $("#" + errordivid).html("");
+                                    }, 400);
+                                    if (result.filetype == "resume" || result.filetype == "others") {
+                                        processOtherFilesUploadedResponse(type, hiddenfieldid, result);
+                                    } else if (result.filetype == "image") {
+                                        processImageFileUploadedResponse(fileelementid, hiddenfieldid, result);
+                                    }
+                                } else {
+                                    $('#' + fileelementid).val(null);
+                                    popupwarnings("<li>Please upload valid attachment</li>");
+                                }
+                                setTimeout(function () {
+                                    $("#" + errordivid).html("");
+                                }, 400);
+                            },
+                            error: function (data, status, e)
+                            {
+                                popupwarnings("<li>" + e + "</li>");
+                            }
+                        }
+                );
+    } else {
+        $("#error_div").html("Please Upload files").css("color", "red");
+    }
+    return false;
+}
+
+function sendmsg() {
+    $("#msgresponse").html('');
+    var cname = $("#cname").val();
+    var cemail = $("#cemail").val();
+    var csubject = $("#csubject").val();
+    var cmessage = $("#cmessage").val();
+    if (cname != '' && cemail != '' && csubject != '' && cmessage != '') {
+        if (!isValidEmailAddress(trim(cemail))) {
+            $("#msgresponse").html("<span class='label label-danger'>Mail id not Valid.</span>");
+        } else {
+            var POSTDATA = "action=sendmsg&cname=" + encodeURIComponent(cname) + "&cemail=" + encodeURIComponent(cemail) + "&csubject=" + encodeURIComponent(csubject) + "&cmessage=" + encodeURIComponent(cmessage);
+            callservicebyajax(POSTDATA, "mserver/registrationserver.php", function () {
+                $("#msgresponse").html("<span class='label label-success'>Mail has been send successfully.</span>");
+            });
+            $("#cname").val('');
+            $("#cemail").val('');
+            $("#csubject").val('');
+            $("#cmessage").val('');
+        }
+    } else {
+        $("#msgresponse").html("<span class='label label-danger'>Please fill all the fields.</span>");
+    }
+}
+
+function invitefriend() {
+    var mailid = $('#friendemail').val();
+    if (!isValidEmailAddress(trim(mailid)))
+        $("#errorinvitefriendemail").html("Invalid Email");
+    else {
+        var POSTDATA = "action=invitefriend&emailid=" + encodeURIComponent(mailid);
+        callservicebyajax(POSTDATA, "mserver/registrationserver.php", function () {
+            $('#ModalWindowBody').html("<span class='label label-success'>Invitation has been sent through Mail</span>");
+            setTimeout(function () {
+                closemodalwindow();
+            }, 200);
+        });
+    }
+}
+
+function fillpopup() {
+    $('#ModalWindowHeader').html('<p><strong>Refer Your Friend</strong></p>');
+    $('#ModalWindowBody').html('<div class="form-group"><input type="text" class="form-control" id="friendemail" placeholder="Friend email id"> <span id="errorinvitefriendemail"></span> </div><div class="form-group"> <a href="#" class="sendBtn" onClick="invitefriend();" >Send</a></div>');
+    $('#ModalWindowFooter').html('');
+    openpopupwindow();
+}
+
+function serachjobs() {
+    var searchobj = {};
+    if ($('#jobexpfrom').length > 0 && $('#jobexpfrom').val() != '') {
+        searchobj['experiencefrom'] = $('#jobexpfrom').val();
+        searchobj['experienceto'] = $('#jobexpfrom').val();
+    }
+    if ($('#jobexpto').length > 0 && $('#jobexpto').val() != '') {
+        searchobj['experienceto'] = $('#jobexpto').val();
+    }
+    if ($('#jobexpyearfrom').length > 0 && $('#jobexpyearfrom').val() != '') {
+        searchobj['experienceyearfrom'] = $('#jobexpyearfrom').val();
+        searchobj['experienceyearto'] = $('#jobexpyearfrom').val();
+    }
+    if ($('#jobexpyearto').length > 0 && $('#jobexpyearto').val() != '') {
+        searchobj['experienceyearto'] = $('#jobexpyearto').val();
+    }
+    if ($('#jobsalaryfrom').length > 0 && $('#jobsalaryfrom').val() != '') {
+        searchobj['salaryfrom'] = $('#jobsalaryfrom').val();
+        searchobj['salaryto'] = $('#jobsalaryfrom').val();
+    }
+    if ($('#jobsalaryto').length > 0 && $('#jobsalaryto').val() != '') {
+        searchobj['salaryto'] = $('#jobsalaryto').val();
+    }
+    if ($('#location').length > 0 && $('#location').val() != '') {
+        searchobj['location'] = $('#location').val();
+    }
+    if ($('#unit').length > 0 && $('#unit').val() != '') {
+        searchobj['unit'] = $('#unit').val();
+    }
+    if ($('#department').length > 0) {
+        searchobj['department'] = $('#department').val();
+    }
+    if ($('#jobname').length > 0 && trim($('#jobname').val()) != '') {
+        searchobj['jobname'] = $('#jobname').val();
+    }
+    if ($('#jobtitle').length > 0 && trim($('#jobtitle').val()) != '') {
+        searchobj['jobtitle'] = $('#jobtitle').val();
+    }
+    if ($('#skills').length > 0 && $('#skills').val() != '') {
+        searchobj['skills'] = $('#skills').val();
+    }
+    if ($('#designation').length > 0 && $('#designation').val() != '') {
+        searchobj['designation'] = $('#designation').val();
+    }
+    if ($('#grade').length > 0 && $('#grade').val() != '') {
+        searchobj['grade'] = $('#grade').val();
+    }
+    if ($('#integer1').length > 0 && $('#integer1').val() != '') {
+        searchobj['integer1'] = $('#integer1').val();
+    }
+    if ($('#integer2').length > 0 && $('#integer2').val() != '') {
+        searchobj['integer2'] = $('#integer2').val();
+    }
+    if ($('#integer3').length > 0 && $('#integer3').val() != '') {
+        searchobj['integer3'] = $('#integer3').val();
+    }
+    if ($('#integer4').length > 0 && $('#integer4').val() != '') {
+        searchobj['integer4'] = $('#integer4').val();
+    }
+    if ($('#integer5').length > 0 && $('#integer5').val() != '') {
+        searchobj['integer5'] = $('#integer5').val();
+    }
+    if (!$.isEmptyObject(searchobj)) {
+        searchallpostedjob(searchobj);
+    } else {
+        popupwarnings("<li>Invalid Job Search!</li>");
+    }
+}
+
+function searchallpostedjob(searchobj) {
+    var POSTDATA = "action=searchpostedjob&searchobj=" + encodeURIComponent(JSON.stringify(searchobj));
+    POSTDATA += "&registrationid=" + encodeURIComponent($("#registrationformid").val());
+    callservicebyajax(POSTDATA, "mserver/registrationserver.php", function () {
+        $('#postedjobdiv').html(ajaxResponse);
+    });
+}
+
+function resetsearchpostedjob() {
+    document.getElementById('searchjobform').reset();
+    $("#department").html("");
+    refreshBootsrapSelectPicker('department');
+    searchallpostedjob("");
+}
+
+function resetform(formid) {
+    $('#' + formid)[0].reset();
+}
+
+function getEventsByLocationForCombo(value) {
+    $("#ddevent").html("");
+    $("#ddrequisition").html("");
+    if ($('#ddjobrolelocation').length > 0) {
+        $("#ddjobrolelocation").html("");
+    }
+    $("#ddjobrolelocation").html("");
+    if ($("#ddevent").length > 0 && value != '0') {
+        startLoadingPopupWindow();
+        var POSTDATA = "action=getlocationeventsforcombo&locationid=" + encodeURIComponent(value);
+        POSTDATA += "&registrationid=" + encodeURIComponent($("#registrationformid").val());
+        callservicebyajax(POSTDATA, "mserver/settingsserver.php", function () {
+            $("#ddevent").html(ajaxResponse);
+            refreshBootsrapSelectPicker('ddevent');
+            stopprocesspopupwindow();
+        });
+    }
+}
+
+function getRequisitionByEventsForCombo(value) {
+    $("#ddrequisition").html("");
+    if ($('#ddjobrolelocation').length > 0) {
+        $("#ddjobrolelocation").html("");
+    }
+    if ($("#ddrequisition").length > 0 && value != '0') {
+        startLoadingPopupWindow();
+        var POSTDATA = "action=geteventsrequisitionsforcombo&eventid=" + encodeURIComponent(value);
+        callservicebyajax(POSTDATA, "mserver/settingsserver.php", function () {
+            $("#ddrequisition").html(ajaxResponse);
+            refreshBootsrapSelectPicker('ddrequisition');
+            stopprocesspopupwindow();
+        });
+    }
+}
+
+function getMJRLocationByJobRoleForCombo(value) {
+    if ($('#ddjobrolelocation').length <= 0) {
+        return;
+    }
+    $("#ddjobrolelocation").html("");
+    var POSTDATA = "action=getJobRoleLocationforcombo&jobid=" + encodeURIComponent(value);
+    startLoadingPopupWindow();
+    callservicebyajax(POSTDATA, "mserver/settingsserver.php", function () {
+        stopprocesspopupwindow();
+        if (ajaxResponse == '') {
+            errormessage = "<li>No suitable job locations found!</li>";
+            popupwarnings(errormessage);
+        }
+        $("#ddjobrolelocation").html(ajaxResponse);
+        refreshBootsrapSelectPicker('ddjobrolelocation');
+    });
+}
+
+function enabledisablemultiselectcheckboxsubmitbutton(buttonid, checkboxname) {
+    checkedvalues = getallsimilarcheckboxvalues(checkboxname);
+    if (checkedvalues && checkedvalues != '')
+        $('#buttonid').attr("disabled", "");
+    else
+        $('#' + buttonid).removeAttr("disabled");
+}
+
+function getallsimilarcheckboxvalues(checkboxname) {
+    chv = $("input[name=" + checkboxname + "]:checked").map(function () {
+        return this.value;
+    }).get().join(",");
+    return chv;
+}
+
+function getallselectedcheckboxvalues(checkboxname) {
+    var chkvalues = [];
+    $('input:checkbox[name=' + checkboxname + ']').each(function ()
+    {
+        if ($(this).attr('checked') == true || $(this).attr('checked') == 'checked' || $(this).prop('checked') == 'checked' || $(this).prop('checked') == true || $(this).is(':checked'))
+            chkvalues.push($(this).val());
+    });
+    return chkvalues.join();
+}
+
+function callservicebyajax(POSTDATA, serverurl, callbackfunction, isRetry) {
+    POSTDATA = POSTDATA + "&alias=" + encodeURIComponent(ClientAlias) + "&requestTimeZone=" + encodeURIComponent(requestTimeZone)
+    $.ajax({
+        url: serverurl,
+        type: "POST",
+        data: POSTDATA,
+        cache: false,
+        success: function (response) {
+            ajaxResponse = response;
+            callbackfunction();
+            ajaxResponse = '';
+        },
+        error: function (xmlhttprequest, textstatus, message) {
+            if (isRetry !== true) {
+                callservicebyajax(POSTDATA, serverurl, callbackfunction, true);
+                return;
+            }
+            stopprocesspopupwindow();
+            alert("Ensure your internet is online and try again");
+        }
+    });
+}
+
+function setSelectedJobsWithCampusDetails(checkboxname) {
+    selectedjobid = $("input[name=" + checkboxname + "]:checked").val();
+    if (!selectedjobid || selectedjobid == '') {
+        popupwarnings("<li>Please select atleast one position</li>");
+        return false;
+    }
+    applyforcampusjob(selectedjobid);
+}
+
+function applyforcampusjob(selectedjobid) {
+    $('#postedjobs').css("display", "none");
+    $('#contentsAfterSlectingJob').css("display", "");
+    var selectedjoblists = $("<input>").addClass("sortablecontent").attr({"type": "hidden", "id": "ddrequisition", "name": "ddrequisition", "required": "true", "value": selectedjobid});
+    $("#campusform").append(selectedjoblists);
+}
+
+function popupwarnings(message) {
+    $('#ModalWindowHeader').html('Warnings');
+    $('.modal-header').addClass('popup-warnings');
+    $('#ModalWindowBody').html("<div><ul>" + message + "</ul></div>");
+    $('#ModalWindowFooter').html('<div class="content"><a class="btn btn-microbtn submitdiv micro-btn-modal-close" onclick="closemodalwindow()">Close</a></div>');
+    $('.modal-header').css("display", "");
+    $('.modal-footer').css("display", "");
+    openpopupwindow();
+}
+
+function popupAssessmentLinkwarnings(message) {
+    $('#ModalWindowHeader').html('Confirm');
+    $('.modal-header').addClass('popup-warnings');
+    $('#ModalWindowBody').html("<div>Are you sure you want to continue? Any ongoing tests will be closed.</div>");
+    $('#ModalWindowFooter').html('<div class="content"><a class="btn btn-microbtn submitdiv" onclick="redirectToNewLink()">OK</a><a class="btn btn-microbtn submitdiv micro-btn-modal-close" onclick="cancelRedirectToNewLink()">Cancel</a></div>');
+    $('.modal-header').css("display", "");
+    $('.modal-footer').css("display", "");
+    openpopupwindow();
+}
+
+function startprocesspopupwindow() {
+    $('.modal-header').css("display", "none");
+    /*$('#ModalWindowBody').html('<p class="popup-process"><img src="giphy.gif" alt="" height="72" width="72">Please wait, Processing.....</p>');*/
+    $('#ModalWindowBody').html('<p class="popup-process"><span><i class="fa fa-spinner fa-pulse fa-2x fa-fw"></i> Please wait, Processing.....</span></p>');
+    $('.modal-footer').css("display", "none");
+    openpopupwindow();
+}
+
+function startLoadingPopupWindow() {
+    $('.modal-header').css("display", "none");
+    $('#ModalWindowBody').html('<p class="popup-process"><img src="giphy.gif" alt="Smiley face" height="22" width="22">Loading.....</p>');
+    $('.modal-footer').css("display", "none");
+    openpopupwindow();
+}
+
+function stopprocesspopupwindow() {
+    $('#ModalWindowBody').html('');
+    closemodalwindow();
+}
+
+function popupmicrowindow(message, header, footer) {
+    $('.modal-header').removeClass('popup-warnings');
+    $('#ModalWindowHeader').html(header);
+    $('#ModalWindowBody').html(message);
+    $('#ModalWindowFooter').html(footer);
+    $('.modal-header').css("display", "");
+    $('.modal-footer').css("display", "");
+    openpopupwindow();
+}
+
+function openpopupwindow(margin) {
+    if (margin && margin !== null) {
+        $('#MicroModalwindow').modal("show", customreposition);
+        //$('#MicroModalwindow').show("show.bs.modal", customreposition);        
+    } else {
+        $('#MicroModalwindow').modal("show");
+        //$('#MicroModalwindow').show("show.bs.modal");
+    }
+}
+
+function closemodalwindow(margin) {
+    //$('#MicroModalwindow').hide("hide.bs.modal");
+    $('#MicroModalwindow').modal("hide");
+    $('#ModalWindowBody').html("");
+    $('#ModalWindowFooter').html("");
+    $('#ModalWindowHeader').html("");
+    if (margin && margin !== null) {
+        $('.modal-dialog').css("width", 600);
+        $('.modal-dialog').css("height", 600);
+        $('.modal-body').css("padding", 15);
+    }
+    if (localstream) {
+        localstream.getVideoTracks()[0].stop();
+    }
+}
+
+function customreposition() {
+    var modal = $(this),
+            dialog = modal.find('.modal-dialog');
+    modal.css('display', 'block');
+    dialog.css("margin-top", 0);
+    if ($(window).width() < 700) {
+        dialog.css("width", 220);
+        dialog.css("height", 220);
+    } else {
+        dialog.css("width", 400);
+        dialog.css("height", 400);
+    }
+    $('.modal-body').css("padding", 2);
+
+}
+
+function reposition() {
+    var modal = $(this),
+            dialog = modal.find('.modal-dialog');
+    modal.css('display', 'block');
+    dialog.css("margin-top", Math.max(0, ($(window).height() - dialog.height()) / 2));
+}
+
+function addmoreprofiles(proposeid, currentid, grp) {
+    if ($('#' + grp + '_div' + proposeid).length > 0) {
+        $('#' + grp + '_div' + proposeid).css("display", "");
+        $('#' + grp + '_btn_addprofile_' + currentid).css("display", "none");
+        $('#' + grp + '_btn_removeprofile_' + currentid).css("display", "none");
+        $('#' + grp + '_div' + proposeid).removeAttr('disabled');
+    }
+}
+
+function removeprofiles(currentid, previousid, grp) {
+    $('#' + grp + '_div' + currentid).css("display", "none");
+    $('#' + grp + '_btn_addprofile_' + previousid).css("display", "");
+    $('#' + grp + '_btn_removeprofile_' + previousid).css("display", "");
+    $('#' + grp + '_div' + currentid).attr("disabled", "");
+    resetdivdata('education_div' + currentid);
+}
+
+function resetdivdata(divid) {
+    $("#" + divid).find(':input').each(function () {
+        switch (this.type) {
+            case 'password':
+            case 'text':
+            case 'textarea':
+            case 'file':
+                $(this).val('');
+                break;
+            case 'select-one':
+            case 'select-multiple':
+                refreshBootsrapSelectPicker($(this).attr('id'));
+                break;
+            case 'checkbox':
+            case 'radio':
+                this.checked = false;
+        }
+    });
+}
+
+function enabledegreebasecontrol(element) {
+    if ($('#ddown5').length > 0) {
+        selecteddegree = $("#" + element + " option:selected").text();
+        if (selecteddegree.toLowerCase().indexOf("m.tech") >= 0 || selecteddegree.toLowerCase().indexOf("m.e") >= 0) {
+            $('#ddown5_div').css("display", "");
+            $('#ddown5').attr('required', 'true');
+            $('#ddown5').val('');
+            refreshBootsrapSelectPicker('ddown5');
+        } else
+        {
+            $('#ddown5_div').css("display", 'none');
+            $('#ddown5').removeAttr('required');
+            $('#ddown5').val('');
+            refreshBootsrapSelectPicker('ddown5');
+        }
+    }
+}
+
+function getcandidatedetailsbyemailorurn() {
+    code = $('#usn').val();
+    email = $('#email').val();
+    if ((code == null || trim(code) == '') && (email == null || trim(email) == '')) {
+        $('#divErrorMessageContainer').html("Please specify email / USN").addClass("label label-danger");
+        return false;
+    }
+    if ((email != null && trim(email) != '') && !validatemail($('#email').val())) {
+        return false;
+    }
+    startprocesspopupwindow();
+    getpagecontent('registration/home.php');
+}
+
+function getSubDepartments(postingoption) {
+
+    if ($("#department").length > 0) {
+        $("#department").html("");
+        var POSTDATA = "action=getdepartmentforcombo&unit=" + encodeURIComponent($("#unit").val());
+        POSTDATA += "&postingoption=" + encodeURIComponent(postingoption);
+        callservicebyajax(POSTDATA, "mserver/registrationserver.php", function () {
+            $("#department").html(ajaxResponse);
+            refreshBootsrapSelectPicker('department');
+        });
+    }
+}
+
+function extractresume() {
+    if (($('#resumelocation').length <= 0 || $('#resumelocation').val() == '') && ($('#newresumelocation').length <= 0 || $('#newresumelocation').val() == ''))
+        return;
+    var isfilereplace = confirm("Form details will be cleared and rewritten by auto extractor, click OK if you want to overwrite existing details, or click Cancel if you want to keep existing details and fill where details not available");
+    if (isfilereplace) {
+        ressetFormForExtraction();
+    }
+    startprocesspopupwindow();
+    if ($('#newresumelocation').length > 0 && $('#newresumelocation').val() !== '') {
+        resumeLink = $('#newresumelocation').val()
+    } else {
+        resumeLink = $('#resumelocation').val()
+    }
+    var POSTDATA = "action=extractresume&resumelocation=" + encodeURIComponent(resumeLink);
+    callservicebyajax(POSTDATA, "mserver/registrationserver.php", function () {
+        if (ajaxResponse !== "") {
+            mapExtractedDetails(ajaxResponse)
+            stopprocesspopupwindow();
+        } else {
+            stopprocesspopupwindow();
+        }
+    });
+}
+
+function validateTermsAndCondition(selectedOption) {
+    if (selectedOption == "1") {
+        $('#lbl_terms_no').removeClass("btn-primary active").addClass("btn-default");
+        $('#lbl_terms_yes').removeClass("btn-default").addClass("btn-primary active");
+        $('#registerbtndiv').removeAttr("disabled", "disabled").attr('onclick', 'precheckregistrationvalues()');
+        $('#registerbtndiv').removeClass("micro-btn-disabled");
+    } else if (selectedOption == "0") {
+        $('#lbl_terms_yes').removeClass("btn-primary active").addClass("btn-default");
+        $('#lbl_terms_no').removeClass("btn-default").addClass("btn-primary active");
+        $('#registerbtndiv').attr("disabled", "disabled").attr('onclick', 'return false');
+        $('#registerbtndiv').addClass("micro-btn-disabled");
+        popupTermsAndConditionWarnings();
+    }
+}
+
+function popupTermsAndConditionWarnings() {
+    var POSTDATA = "action=getTermsAndConditionWarnings&registrationid=" + encodeURIComponent($("#registrationformid").val());
+    callservicebyajax(POSTDATA, "mserver/savecandidateserver.php", function () {
+        if (ajaxResponse !== "") {
+            var result = jQuery.parseJSON(ajaxResponse);
+            $('#btn_modal_window_header').attr('onclick', 'closeTermsAndCondition()');
+            popupmicrowindow(result.Message, "", '<div class="content"><a class="btn btn-microbtn submitdiv" onclick="closeTermsAndCondition()">OK</a></div>');
+        }
+    });
+}
+
+function closeTermsAndCondition() {
+    $('#lbl_terms_no').removeClass("btn-primary active").addClass("btn-default");
+    $("input[name=terms]").removeAttr('checked');
+    $('#btn_modal_window_header').attr('onclick', 'closemodalwindow()');
+    closemodalwindow();
+}
+
+function openAssessmentLink(link) {
+    assessment_url = link;
+    try {
+        if (!openWindow || openWindow.closed) {
+            openWindow = window.open(assessment_url, '_blank');
+        } else {
+            popupAssessmentLinkwarnings();
+        }
+    } catch (ex) {
+        openWindow = window.open(assessment_url, '_blank');
+        openWindow.focus();
+    }
+}
+
+function redirectToNewLink() {
+    openWindow.close();
+    if (!openWindow || openWindow.closed) {
+        openWindow = window.open(assessment_url, '_blank');
+    }
+    closemodalwindow();
+    openWindow.focus();
+
+}
+
+function cancelRedirectToNewLink() {
+    closemodalwindow();
+    openWindow.focus();
+}
+
+function getMyDetailsOnKeyPress(e) {
+    if (e.keyCode == 13) {
+        getcandidatedetailsbyemailorurn();
+    }
+}
+
+function refreshBootsrapSelectPicker(id) {
+    if (id) {
+        $('#' + id).selectpicker('refresh');
+        if (isMobileDevice) {
+            //    $('#' + id).selectpicker('mobile');
+        }
+    } else {
+        $('.selectpicker').selectpicker('refresh');
+        if (isMobileDevice) {
+            //  $('#' + id).selectpicker('mobile');
+        }
+    }
+}
+
+function changenavstatusclass(selectedtab) {
+    $('#navbarclass').each(function () {
+        $(this).find('li').each(function () {
+            $(this).removeClass("active");
+        });
+    });
+    $('#' + selectedtab).toggleClass("active");
+}
+
+function clearMultiSelections(elementId) {
+    $('#' + elementId + ' option').attr('selected', false);
+    $("[data-id=" + elementId + "]").find(".filter-option-inner-inner")[0].innerHTML = 'Nothing selected';
+    $("[data-id=" + elementId + "]").attr("title", "");
+}
+
+function applycrpomultiplejobs(jobid) {
+    if ($("#chk_crpojob_" + jobid).attr('checked') == true || $("#chk_crpojob_" + jobid).attr('checked') == 'checked' || $("#chk_crpojob_" + jobid).prop('checked') == 'checked' || $("#chk_crpojob_" + jobid).prop('checked') == true) {
+        $('#chk_crpojob_' + jobid).attr("checked", false);
+        $('#chk_crpojob_span' + jobid).removeClass("fa fa-check");
+    } else {
+        $('#chk_crpojob_span' + jobid).addClass("fa fa-check");
+        $('#chk_crpojob_' + jobid).attr("checked", true);
+    }
+}
+
+function processImageFileUploadedResponse(filEelementId, hiddenfieldid, result) {
+    var hiddenid = hiddenfieldid;
+    if ($('#new' + hiddenfieldid).length > 0) {
+        hiddenid = 'new' + hiddenfieldid;
+        $('#' + hiddenid).val("../muploadfiles/" + result.newfilename);
+    } else
+        $('#' + hiddenid).val("../muploadfiles/" + result.newfilename);
+    var div = $("<div>");
+    var filenamehtml = result.filename;
+    if (result.filename.length > 20) {
+        filenamehtml = result.filename.substring(0, 20);
+        var extension = result.filename.substr((result.filename.lastIndexOf('.') + 1));
+        filenamehtml = filenamehtml + "....." + extension;
+    }
+    $("<a/>").css({"cursor": "pointer", "color": "#0000CC"}).html(filenamehtml).
+            attr({"href": "mserver/downloadfiles.php?filelocation=muploadfiles/" + result.newfilename, "Title": "Download", "target": "_blank"})
+            .appendTo(div);
+
+    $("#" + hiddenid + "linkdiv").html(div);
+    /*$("#photolinkdiv").html(div);*/
+    previewUploadedImage(filEelementId, hiddenid, result.newfilename)
+}
+
+function processOtherFilesUploadedResponse(type, hiddenfieldid, result) {
+    var filenamehtml = null;
+    if ($('#new' + hiddenfieldid).length > 0)
+        $('#new' + hiddenfieldid).val("../muploadfiles/" + result.newfilename);
+    else
+        $('#' + hiddenfieldid).val("../muploadfiles/" + result.newfilename);
+    var div = $("<div>");
+    filenamehtml = result.filename;
+    if (result.filename.length > 20) {
+        filenamehtml = result.filename.substring(0, 20);
+        var extension = result.filename.substr((result.filename.lastIndexOf('.') + 1));
+        filenamehtml = filenamehtml + "....." + extension;
+    }
+    $("<a/>").css({"cursor": "pointer", "color": "#0000CC"}).html(filenamehtml).
+            attr({"href": "mserver/downloadfiles.php?filelocation=muploadfiles/" + result.newfilename, "Title": "Download", "target": "_blank"})
+            .appendTo(div);
+    if (type == "resume") {
+        $("#resumelinkdiv").html(div);
+        if ($('#btn_extractor').length > 0)
+            $('#btn_extractor').css("display", "");
+    }
+    if (type == "others")
+        $("#" + hiddenfieldid + "linkdiv").html(div);
+}
+
+function previewUploadedImage(fileelementid, hiddenid, filename) {
+    $('#ModalWindowHeader').html('');
+    $('.modal-header').addClass('popup-warnings');
+    $('#ModalWindowBody').html("<p><h3 style='padding:10px;'>Confirm Uploaded Photo</h3></p><img src='mserver/downloadfiles.php?filelocation=muploadfiles/" + filename + "' height='300' width='300'>");
+    $('#ModalWindowFooter').html('<div class="col-md-12"><a class="btn btn-microbtn btn-warning pull-right" onclick="rejectUploadedPhoto(\'' + fileelementid + '\',\'' + hiddenid + '\')">Not this</a><a class="btn btn-microbtn submitdiv pull-right" style="margin-right:10px;" onclick="closemodalwindow();">Confirm</a></div>');
+    $('.modal-header').css("display", "none");
+    $('.modal-footer').css("display", "");
+    openpopupwindow();
+}
+
+function rejectUploadedPhoto(fileelementid, hiddenid) {
+    $("#" + hiddenid).val(null);
+    if ($('#' + fileelementid).length > 0)
+        $('#' + fileelementid).val(null);
+    $("#" + hiddenid + "linkdiv").html("");
+    closemodalwindow();
+}

@@ -1,0 +1,64 @@
+﻿<%@ Master Language="C#" AutoEventWireup="true" CodeBehind="Viwer.master.cs" Inherits="Karateproject.Viwer" %>
+
+<!DOCTYPE HTML>
+<!--
+	Introspect by TEMPLATED
+	templated.co @templatedco
+	Released for free under the Creative Commons Attribution 3.0 license (templated.co/license)
+-->
+<html>
+	<head>
+		<title>Introspect by TEMPLATED</title>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+		<link rel="stylesheet" href="assets/css/main.css" />
+	</head>
+	<body>
+
+		<!-- Header -->
+			<header id="header">
+				<div class="inner">
+					<a href="index.html" class="logo">Karate Class</a>
+					<nav id="nav">
+						<a href="Home.aspx">Home</a>
+						<a href="aboutus.aspx">About us</a>
+						<a href="enquiry.aspx">Enquiry</a>
+                        <a href="ViewBranch.aspx">View Branch</a>
+                        <a href="LoginForm.aspx">Login</a>
+
+					</nav>
+				</div>
+			</header>
+			<a href="#menu" class="navPanelToggle"><span class="fa fa-bars"></span></a>
+
+		<!-- Banner -->
+			
+
+		<!-- One -->
+			
+
+		<!-- Two -->
+			
+
+		<!-- Three -->
+              <div id="testimonial" class="testimonial" >
+                  <asp:ContentPlaceHolder ID="ContentPlaceHolder1" runat="server"></asp:ContentPlaceHolder>
+                  </div>
+        
+
+		<!-- Footer -->
+        <div id="Div1" >
+                 <section id="footer">
+				<h4>Karate Class</h4>
+			</section>
+                  </div>
+			
+
+		<!-- Scripts -->
+			<script src="assets/js/jquery.min.js"></script>
+			<script src="assets/js/skel.min.js"></script>
+			<script src="assets/js/util.js"></script>
+			<script src="assets/js/main.js"></script>
+
+	</body>
+</html>
